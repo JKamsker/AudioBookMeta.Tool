@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/BookMeta.Cli/BookMeta.Cli.csproj" />
+  <Project Path="tests/BookMeta.Cli.Tests/BookMeta.Cli.Tests.csproj" />
+</Solution>

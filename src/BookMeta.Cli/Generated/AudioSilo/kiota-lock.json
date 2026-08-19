@@ -1,0 +1,40 @@
+{
+  "descriptionHash": "5174F4BACD48634AA3F34092DFD92DF7FBB39CFF4B73C4A67D209F4C0D0906B7B6D9152590A641EAE34C6E45BA82E18DA618E7EFF09757C224C62BB45A2F73E5",
+  "descriptionLocation": "https://meta.audiosilo.app/api/v1/openapi.json",
+  "lockFileVersion": "1.0.0",
+  "kiotaVersion": "1.34.1",
+  "clientClassName": "AudioSiloApiClient",
+  "typeAccessModifier": "Internal",
+  "clientNamespaceName": "BookMeta.Generated.AudioSilo",
+  "language": "CSharp",
+  "usesBackingStore": false,
+  "excludeBackwardCompatible": true,
+  "includeAdditionalData": true,
+  "disableSSLValidation": false,
+  "serializers": [
+    "Microsoft.Kiota.Serialization.Json.JsonSerializationWriterFactory",
+    "Microsoft.Kiota.Serialization.Text.TextSerializationWriterFactory",
+    "Microsoft.Kiota.Serialization.Form.FormSerializationWriterFactory",
+    "Microsoft.Kiota.Serialization.Multipart.MultipartSerializationWriterFactory"
+  ],
+  "deserializers": [
+    "Microsoft.Kiota.Serialization.Json.JsonParseNodeFactory",
+    "Microsoft.Kiota.Serialization.Text.TextParseNodeFactory",
+    "Microsoft.Kiota.Serialization.Form.FormParseNodeFactory"
+  ],
+  "structuredMimeTypes": [
+    "application/json",
+    "text/plain;q=0.9",
+    "application/x-www-form-urlencoded;q=0.2",
+    "multipart/form-data;q=0.1"
+  ],
+  "includePatterns": [
+    "/api/v1/search",
+    "/api/v1/lookup",
+    "/api/v1/works/{id}",
+    "/healthz"
+  ],
+  "excludePatterns": [],
+  "disabledValidationRules": [],
+  "allowedExternalOrigins": []
+}

@@ -1,0 +1,97 @@
+using System.Net;
+using BookMeta.Commands;
+using BookMeta.Commands.Config;
+using BookMeta.Commands.Providers;
+using BookMeta.Common;
+using BookMeta.Configuration;
+using BookMeta.Providers;
+using BookMeta.Render;
+using BookMeta.Search;
+using Microsoft.Extensions.DependencyInjection;
+using Spectre.Console;
+using Spectre.Console.Cli;
+
+var noColor = args.Contains("--no-color", StringComparer.Ordinal) || Environment.GetEnvironmentVariable("NO_COLOR") is not null;
+var ansiConsole = AnsiConsole.Create(new AnsiConsoleSettings
+{
+    Ansi = noColor ? AnsiSupport.No : AnsiSupport.Detect,
+    ColorSystem = noColor ? ColorSystemSupport.NoColors : ColorSystemSupport.Detect,
+    Out = new AnsiConsoleOutput(Console.Out)
+});
+
+var services = new ServiceCollection();
+services.AddSingleton(new AppConsole(ansiConsole));
+services.AddSingleton<ConfigPathResolver>();
+services.AddSingleton<ConfigLoader>();
+services.AddSingleton<ProviderSelector>();
+services.AddSingleton<ProviderFactory>();
+services.AddSingleton<ProviderTransport>();
+services.AddSingleton<KiotaClientFactory>();
+services.AddSingleton<SearchCache>();
+services.AddSingleton<ResultRanker>();
+services.AddSingleton<ResultClusterer>();
+services.AddSingleton<SearchEngine>();
+services.AddSingleton<SearchRenderer>();
+services.AddSingleton<DiagnosticLogger>();
+services.AddHttpClient("provider", client => client.Timeout = Timeout.InfiniteTimeSpan)
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+    {
+        AllowAutoRedirect = false,
+        AutomaticDecompression = DecompressionMethods.All,
+        ConnectTimeout = TimeSpan.FromSeconds(3),
+        MaxConnectionsPerServer = 16
+    });
+
+var app = new CommandApp(new TypeRegistrar(services));
+app.Configure(config =>
+{
+    config.SetApplicationName("bookmeta");
+    config.SetApplicationVersion("1.0.0");
+    config.AddCommand<SearchCommand>("search")
+        .WithDescription("Search and locally rank metadata across configured providers.")
+        .WithExample("search", "har pot philos")
+        .WithExample("search", "dune", "-p", "libex", "--json");
+    config.AddCommand<GetCommand>("get")
+        .WithDescription("Retrieve a native provider record by PROVIDER:ID.")
+        .WithExample("get", "libex:B00B7NPRY8");
+    config.AddBranch("providers", providers =>
+    {
+        providers.SetDescription("Inspect providers, capabilities, and connectivity without exposing secrets.");
+        providers.AddCommand<ProvidersListCommand>("list").WithDescription("List configured provider instances.");
+        providers.AddCommand<ProvidersShowCommand>("show").WithDescription("Show one provider with secrets redacted.");
+        providers.AddCommand<ProvidersTestCommand>("test").WithDescription("Run non-destructive connectivity and contract checks.");
+        providers.AddCommand<ProvidersCapabilitiesCommand>("capabilities").WithDescription("Show tri-state documented and configured capabilities.");
+    });
+    config.AddBranch("config", branch =>
+    {
+        branch.SetDescription("Locate and validate the TOML configuration.");
+        branch.AddCommand<ConfigPathCommand>("path").WithDescription("Print the resolved configuration path.");
+        branch.AddCommand<ConfigValidateCommand>("validate").WithDescription("Validate structure, targets, groups, and secret references.");
+    });
+    config.AddCommand<CompletionCommand>("completion").WithDescription("Generate shell completion setup for bash, zsh, fish, or PowerShell.");
+    config.SetExceptionHandler((exception, resolver) =>
+    {
+        var console = (AppConsole?)resolver?.Resolve(typeof(AppConsole)) ?? new AppConsole(ansiConsole);
+        var known = exception as BookMetaException;
+        var provider = exception as ProviderException;
+        var message = known?.Message ?? provider?.Message ?? (exception is OperationCanceledException ? "Operation cancelled." : "The command failed unexpectedly.");
+        console.Error($"error: {message}");
+        if (known?.Recovery is not null)
+            console.Error($"next: {known.Recovery}");
+        else if (provider is not null)
+            console.Error($"next: Check provider '{provider.Provider}' connectivity and configuration, then retry.");
+        var quiet = args.Contains("--quiet", StringComparer.Ordinal);
+        try
+        {
+            var logger = (DiagnosticLogger?)resolver?.Resolve(typeof(DiagnosticLogger));
+            var path = logger?.Write(exception, args);
+            if (!quiet && path is not null)
+                console.Error($"Diagnostic log saved to {path}");
+        }
+        catch (Exception) when (exception is not OutOfMemoryException) { }
+        return known?.ExitCode ?? (provider is not null ? ExitCodes.ProvidersFailed : exception is OperationCanceledException ? ExitCodes.Cancelled : ExitCodes.General);
+    });
+});
+
+var exitCode = await app.RunAsync(args);
+return exitCode < 0 ? ExitCodes.Usage : exitCode;
