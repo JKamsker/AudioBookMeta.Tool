@@ -207,7 +207,8 @@ public sealed class AudioSiloProvider(ProviderConfig config, ProviderTransport t
             foreach (var item in isbns.EnumerateArray())
             {
                 var value = item.GetString();
-                JsonFields.AddIdentifier(value?.Length == 10 ? result.Isbn10 : result.Isbn13, value, value?.Length ?? 0);
+                if (value?.Length == 10) JsonFields.AddIdentifier(result.Isbn10, value, 10);
+                if (value?.Length == 13) JsonFields.AddIdentifier(result.Isbn13, value, 13);
             }
         return result;
     }

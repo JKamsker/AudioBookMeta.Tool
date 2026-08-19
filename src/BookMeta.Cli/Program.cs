@@ -74,12 +74,15 @@ app.Configure(config =>
         var console = (AppConsole?)resolver?.Resolve(typeof(AppConsole)) ?? new AppConsole(ansiConsole);
         var known = exception as BookMetaException;
         var provider = exception as ProviderException;
-        var message = known?.Message ?? provider?.Message ?? (exception is OperationCanceledException ? "Operation cancelled." : "The command failed unexpectedly.");
+        var usage = exception as CommandRuntimeException;
+        var message = known?.Message ?? provider?.Message ?? usage?.Message ?? (exception is OperationCanceledException ? "Operation cancelled." : "The command failed unexpectedly.");
         console.Error($"error: {message}");
         if (known?.Recovery is not null)
             console.Error($"next: {known.Recovery}");
         else if (provider is not null)
             console.Error($"next: Check provider '{provider.Provider}' connectivity and configuration, then retry.");
+        else if (usage is not null)
+            console.Error("next: Run the command with --help to review required arguments and valid options.");
         var quiet = args.Contains("--quiet", StringComparer.Ordinal);
         try
         {
@@ -89,7 +92,7 @@ app.Configure(config =>
                 console.Error($"Diagnostic log saved to {path}");
         }
         catch (Exception) when (exception is not OutOfMemoryException) { }
-        return known?.ExitCode ?? (provider is not null ? ExitCodes.ProvidersFailed : exception is OperationCanceledException ? ExitCodes.Cancelled : ExitCodes.General);
+        return known?.ExitCode ?? (usage is not null ? ExitCodes.Usage : provider is not null ? ExitCodes.ProvidersFailed : exception is OperationCanceledException ? ExitCodes.Cancelled : ExitCodes.General);
     });
 });
 

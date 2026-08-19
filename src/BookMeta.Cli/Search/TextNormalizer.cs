@@ -15,6 +15,8 @@ public static class TextNormalizer
         var pendingSpace = false;
         foreach (var rune in input.EnumerateRunes())
         {
+            if (rune.Value is '\'' or 0x2018 or 0x2019 or 0x02BC)
+                continue;
             var category = Rune.GetUnicodeCategory(rune);
             if (category is UnicodeCategory.UppercaseLetter or UnicodeCategory.LowercaseLetter or UnicodeCategory.TitlecaseLetter or
                 UnicodeCategory.ModifierLetter or UnicodeCategory.OtherLetter or UnicodeCategory.DecimalDigitNumber or

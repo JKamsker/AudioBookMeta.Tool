@@ -47,6 +47,9 @@ public sealed class ResultRanker
             result.ScoreEvidence[field.Name] = $"{similarity:0.00}";
         }
         result.Score = denominator == 0 ? 0 : Math.Round(weighted / denominator * 100, 1);
+        var identifierRequested = requestedAsin.Length > 0 || requestedIsbn.Length > 0;
+        if (identifierRequested)
+            result.Score = Math.Min(result.Score, 95);
         if (identifierConflict)
         {
             result.Score = Math.Min(result.Score, 70);
@@ -60,7 +63,8 @@ public sealed class ResultRanker
             >= 75 => "medium",
             _ => "low"
         };
-        if (request.Author is not null && authorScore < .45 && result.Score >= 75)
+        var titleScore = TextSimilarity.Score(titleQuery, result.Title, request.Exact);
+        if (request.Author is not null && authorScore < .45 && titleScore >= .8)
             result.Warnings.Add("title is plausible but supplied author evidence is weak");
     }
 }

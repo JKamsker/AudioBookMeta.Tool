@@ -30,7 +30,7 @@ public sealed class ProvidersShowCommand(ConfigLoader loader, ProviderFactory fa
                 id = provider.Id, adapter_type = provider.Type, base_url = provider.BaseUrl.ToString(), provider.Enabled, provider.Region,
                 provider.Priority, provider.Groups, timeout = provider.Timeout?.ToString(), provider.AllowInsecureHttp, provider.AppendSearchPath,
                 auth = provider.Auth is null ? null : $"{provider.Auth.Split(':', 2)[0]}:<redacted>",
-                headers = provider.Headers.ToDictionary(pair => pair.Key, pair => pair.Key.Contains("token", StringComparison.OrdinalIgnoreCase) || pair.Key.Contains("key", StringComparison.OrdinalIgnoreCase) ? "<redacted>" : pair.Value),
+                headers = provider.Headers.ToDictionary(pair => pair.Key, pair => IsSensitive(pair.Key, pair.Value) ? "<redacted>" : pair.Value),
                 provider.QueryParams,
                 capabilities = capabilities.Values.ToDictionary(pair => pair.Key, pair => CapabilityCatalog.Display(pair.Value)),
                 capability_sources = capabilities.Sources,
@@ -53,4 +53,8 @@ public sealed class ProvidersShowCommand(ConfigLoader loader, ProviderFactory fa
         }
         return ExitCodes.Success;
     }
+
+    private static bool IsSensitive(string name, string value)
+        => name.Contains("token", StringComparison.OrdinalIgnoreCase) || name.Contains("key", StringComparison.OrdinalIgnoreCase) ||
+           value.StartsWith("env:", StringComparison.Ordinal) || value.StartsWith("file:", StringComparison.Ordinal) || value.StartsWith("literal:", StringComparison.Ordinal);
 }

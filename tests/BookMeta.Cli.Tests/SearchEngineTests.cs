@@ -1,0 +1,68 @@
+using System.Diagnostics;
+using System.Net;
+using BookMeta.Common;
+using BookMeta.Configuration;
+using BookMeta.Model;
+using BookMeta.Providers;
+using BookMeta.Search;
+
+namespace BookMeta.Cli.Tests;
+
+public sealed class SearchEngineTests
+{
+    [Fact]
+    public async Task Providers_execute_concurrently()
+    {
+        var factory = new TestHttpFactory(async (request, cancellationToken) =>
+        {
+            await Task.Delay(250, cancellationToken);
+            return TestHttpFactory.Json($$"""{"matches":[{"title":"{{request.RequestUri!.Host}}"}]}""");
+        });
+        var engine = Engine(factory);
+        var timer = Stopwatch.StartNew();
+        var execution = await engine.ExecuteAsync(Config(), new SearchRequest { Query = "book" }, Options(strict: false), TestContext.Current.CancellationToken);
+        Assert.Equal(ExitCodes.Success, execution.ExitCode);
+        Assert.Equal(2, execution.Response.Results.Count);
+        Assert.True(timer.Elapsed < TimeSpan.FromMilliseconds(450), $"Expected concurrent execution, elapsed {timer.Elapsed}.");
+    }
+
+    [Fact]
+    public async Task Strict_mode_changes_exit_code_but_preserves_successful_results()
+    {
+        var factory = new TestHttpFactory((request, _) => Task.FromResult(request.RequestUri!.Host == "bad.example"
+            ? TestHttpFactory.Json("{}", HttpStatusCode.InternalServerError)
+            : TestHttpFactory.Json("""{"matches":[{"title":"Dune","author":"Frank Herbert"}]}""")));
+        var engine = Engine(factory);
+        var normal = await engine.ExecuteAsync(Config(), new SearchRequest { Query = "dune" }, Options(strict: false), TestContext.Current.CancellationToken);
+        var strict = await engine.ExecuteAsync(Config(), new SearchRequest { Query = "dune" }, Options(strict: true), TestContext.Current.CancellationToken);
+        Assert.Equal(ExitCodes.Success, normal.ExitCode);
+        Assert.Equal(ExitCodes.StrictFailure, strict.ExitCode);
+        Assert.Single(strict.Response.Results);
+        Assert.Contains(strict.Response.ProviderStatus, status => status.Status == "error");
+    }
+
+    private static SearchEngine Engine(IHttpClientFactory http)
+    {
+        var transport = new ProviderTransport(http);
+        return new SearchEngine(new ProviderSelector(), new ProviderFactory(transport, new KiotaClientFactory(http)),
+            new SearchCache(new ConfigPathResolver()), new ResultRanker(), new ResultClusterer());
+    }
+
+    private static BookMetaConfig Config() => new()
+    {
+        SourcePath = "test.toml",
+        Search = new SearchConfig { MaxConcurrency = 2, ProviderTimeout = TimeSpan.FromSeconds(2), Deadline = TimeSpan.FromSeconds(2) },
+        Providers = new Dictionary<string, ProviderConfig>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["good"] = Provider("good", "https://good.example"),
+            ["bad"] = Provider("bad", "https://bad.example")
+        }
+    };
+
+    private static ProviderConfig Provider(string id, string url) => new() { Id = id, Type = "abs", BaseUrl = new Uri(url), Enabled = true };
+
+    private static SearchOptions Options(bool strict) => new()
+    {
+        Includes = [], Groups = [], Excludes = [], Fresh = true, IncludeRaw = true, Strict = strict
+    };
+}

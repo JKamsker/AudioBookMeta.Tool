@@ -8,8 +8,7 @@ public sealed class AppConsole(IAnsiConsole stdout)
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-        WriteIndented = true,
-        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+        WriteIndented = true
     };
 
     public IAnsiConsole Out { get; } = stdout;

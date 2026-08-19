@@ -21,7 +21,7 @@ public abstract class GlobalSettings : CommandSettings
     [Description("Disable ANSI color (NO_COLOR is also respected).")]
     public bool NoColor { get; init; }
 
-    [CommandOption("-v|--verbose")]
+    [CommandOption("--verbose")]
     [Description("Show resolved settings and diagnostic details on stderr.")]
     public bool Verbose { get; init; }
 }
