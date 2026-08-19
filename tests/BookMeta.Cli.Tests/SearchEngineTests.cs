@@ -41,6 +41,34 @@ public sealed class SearchEngineTests
         Assert.Contains(strict.Response.ProviderStatus, status => status.Status == "error");
     }
 
+    [Fact]
+    public async Task Editions_apply_limit_to_individual_candidates()
+    {
+        var factory = new TestHttpFactory((_, _) => Task.FromResult(TestHttpFactory.Json("""
+            {"matches":[
+              {"id":"one","title":"Dune","author":"Frank Herbert","narrator":"Narrator One"},
+              {"id":"two","title":"Dune","author":"Frank Herbert","narrator":"Narrator Two"}
+            ]}
+            """)));
+        var execution = await Engine(factory).ExecuteAsync(Config(),
+            new SearchRequest { Query = "dune", Editions = true },
+            Options(strict: false) with { Limit = 1 }, TestContext.Current.CancellationToken);
+        Assert.Single(execution.Response.Results);
+    }
+
+    [Fact]
+    public async Task Caller_cancellation_is_not_reported_as_provider_failure()
+    {
+        var factory = new TestHttpFactory(async (_, cancellationToken) =>
+        {
+            await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+            return TestHttpFactory.Json("{\"matches\":[]}");
+        });
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(30));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Engine(factory).ExecuteAsync(
+            Config(), new SearchRequest { Query = "book" }, Options(strict: false), cancellation.Token));
+    }
+
     private static SearchEngine Engine(IHttpClientFactory http)
     {
         var transport = new ProviderTransport(http);

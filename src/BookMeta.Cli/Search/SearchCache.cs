@@ -36,7 +36,7 @@ public sealed class SearchCache(ConfigPathResolver paths)
 
     private string PathFor(ProviderConfig provider, SearchRequest request)
     {
-        var payload = $"v1|{provider.Id}|{provider.Type}|{provider.BaseUrl}|{JsonSerializer.Serialize(request, Options)}";
+        var payload = $"v1|{provider.Id}|{provider.Type}|{provider.BaseUrl}|editions:{request.Editions}|{JsonSerializer.Serialize(request, Options)}";
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload))).ToLowerInvariant();
         return Path.Combine(paths.ResolveCacheDirectory(), "search", $"{hash}.json");
     }

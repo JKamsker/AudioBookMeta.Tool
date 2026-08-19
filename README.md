@@ -115,7 +115,7 @@ Standard output contains only the requested primary data. Human warnings, recove
 | `6` | Requested capability is unsupported |
 | `10` | Cancellation or deadline termination |
 
-Errors include a concise message and, when possible, a `next:` recovery action. Unexpected and provider failures write a redacted diagnostic log under the config-adjacent `logs` directory; the path is reported unless `--quiet` is active. Use `--verbose` to print resolved configuration, limits, timeouts, and selected providers to standard error.
+Errors include a concise message and, when possible, a `next:` recovery action. Unexpected and directly surfaced provider failures write a redacted diagnostic log under the config-adjacent `logs` directory; predictable usage and configuration errors do not. The path is reported unless `--quiet` is active. Use `--verbose` to print resolved configuration, limits, timeouts, and selected providers to standard error.
 
 Every command is read-only. There are no create, update, delete, or remote side-effect operations, so confirmation and dry-run flags are intentionally absent.
 

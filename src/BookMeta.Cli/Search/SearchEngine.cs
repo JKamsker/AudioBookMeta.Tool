@@ -29,13 +29,14 @@ public sealed class SearchEngine(
         using var concurrency = new SemaphoreSlim(config.Search.MaxConcurrency);
         var tasks = providers.Select(provider => RunProviderAsync(provider, config, request, options, candidates, statuses, warnings, concurrency, deadline.Token)).ToList();
         await Task.WhenAll(tasks);
+        cancellationToken.ThrowIfCancellationRequested();
 
         var ranked = ranker.Rank(request, candidates);
         if (request.Exact)
             ranked = ranked.Where(result => result.Score > 0).ToList();
         clusterer.AssignClusters(ranked, options.NoDedupe);
         var limit = options.Limit ?? config.Search.Limit;
-        var limited = Limit(ranked, limit, options.NoDedupe);
+        var limited = Limit(ranked, limit, options.NoDedupe || request.Editions);
         var orderedStatuses = statuses.OrderBy(status => providers.ToList().FindIndex(provider => provider.Id.Equals(status.Provider, StringComparison.OrdinalIgnoreCase))).ToList();
         var failures = orderedStatuses.Count(status => status.Status is not ("ok" or "empty"));
         var successes = orderedStatuses.Count - failures;
@@ -67,7 +68,7 @@ public sealed class SearchEngine(
             await concurrency.WaitAsync(deadline);
             try
             {
-                var cached = options.Fresh ? null : await cache.ReadAsync(provider, request, config.Search.CacheTtl, deadline);
+                var cached = options.Fresh || options.IncludeRaw ? null : await cache.ReadAsync(provider, request, config.Search.CacheTtl, deadline);
                 var response = cached;
                 var cacheHit = cached is not null;
                 if (response is null)

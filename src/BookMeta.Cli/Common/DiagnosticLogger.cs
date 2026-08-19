@@ -12,11 +12,14 @@ public sealed class DiagnosticLogger(ConfigPathResolver paths)
         Directory.CreateDirectory(directory);
         var path = Path.Combine(directory, $"bookmeta-error-{DateTimeOffset.UtcNow:yyyyMMdd-HHmmss-fff}.log");
         var safeArgs = arguments.Select(RedactArgument);
+        var safeMessage = exception is Providers.ProviderException ? exception.Message : "omitted to protect provider data";
         File.WriteAllText(path,
             $"time: {DateTimeOffset.UtcNow:O}{Environment.NewLine}" +
             $"command: bookmeta {string.Join(' ', safeArgs)}{Environment.NewLine}" +
             $"config: {paths.Resolve(explicitPath)}{Environment.NewLine}" +
-            $"exception:{Environment.NewLine}{exception}");
+            $"exception: {exception.GetType().FullName}{Environment.NewLine}" +
+            $"message: {safeMessage}{Environment.NewLine}" +
+            $"stack:{Environment.NewLine}{exception.StackTrace}");
         return path;
     }
 

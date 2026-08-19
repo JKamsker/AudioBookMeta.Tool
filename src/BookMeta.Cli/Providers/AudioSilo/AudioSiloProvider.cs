@@ -140,7 +140,10 @@ public sealed class AudioSiloProvider(ProviderConfig config, ProviderTransport t
     private async Task<IReadOnlyList<SearchResult>> GetWorkEditionsTypedAsync(string workId, CancellationToken cancellationToken)
     {
         var work = await KiotaInvoker.InvokeAsync(Id, () => client.Api.V1.Works[workId].GetAsync(cancellationToken: cancellationToken), cancellationToken);
-        return work is null ? [] : mapper.MapEditions(work);
+        var results = work is null ? [] : mapper.MapEditions(work);
+        return results.Count == 0
+            ? throw new ProviderException(Id, "invalid_response", "AudioSilo work response has no title")
+            : results;
     }
 
     private async Task<ProviderSearchResponse> IdentifierSearchRawAsync(SearchRequest request, CancellationToken cancellationToken)
@@ -184,7 +187,12 @@ public sealed class AudioSiloProvider(ProviderConfig config, ProviderTransport t
         if (!document.RootElement.TryGetProperty("recordings", out var recordings) || recordings.ValueKind != JsonValueKind.Array)
             return ParseWorkDetail(document.RootElement, null, true) is { } result ? [result] : [];
         var ids = recordings.EnumerateArray().Select(item => JsonFields.String(item, "id")).Where(id => id is not null).ToList();
-        return ids.Select(id => ParseWorkDetail(document.RootElement, id, true)).Where(result => result is not null).Select(result => result!).ToList();
+        var results = ids.Count == 0
+            ? ParseWorkDetail(document.RootElement, null, true) is { } work ? [work] : []
+            : ids.Select(id => ParseWorkDetail(document.RootElement, id, true)).Where(result => result is not null).Select(result => result!).ToList();
+        return results.Count == 0
+            ? throw new ProviderException(Id, "invalid_response", "AudioSilo work response has no title")
+            : results;
     }
 
     private static string? WorkId(SearchResult result)

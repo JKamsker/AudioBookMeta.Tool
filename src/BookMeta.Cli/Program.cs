@@ -86,10 +86,13 @@ app.Configure(config =>
         var quiet = args.Contains("--quiet", StringComparer.Ordinal);
         try
         {
-            var logger = (DiagnosticLogger?)resolver?.Resolve(typeof(DiagnosticLogger));
-            var path = logger?.Write(exception, args);
-            if (!quiet && path is not null)
-                console.Error($"Diagnostic log saved to {path}");
+            if (usage is null && known is null)
+            {
+                var logger = (DiagnosticLogger?)resolver?.Resolve(typeof(DiagnosticLogger));
+                var path = logger?.Write(exception, args);
+                if (!quiet && path is not null)
+                    console.Error($"Diagnostic log saved to {path}");
+            }
         }
         catch (Exception) when (exception is not OutOfMemoryException) { }
         return known?.ExitCode ?? (usage is not null ? ExitCodes.Usage : provider is not null ? ExitCodes.ProvidersFailed : exception is OperationCanceledException ? ExitCodes.Cancelled : ExitCodes.General);

@@ -96,6 +96,55 @@ public sealed class AdapterTests
         Assert.DoesNotContain("secret", exception.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task Abs_documented_not_found_can_be_treated_as_empty()
+    {
+        var factory = new TestHttpFactory((_, _) => Task.FromResult(TestHttpFactory.Json("{}", HttpStatusCode.NotFound)));
+        var config = Config("abs") with
+        {
+            CapabilityOverrides = new Dictionary<string, CapabilityState> { ["not_found_is_empty"] = CapabilityState.Supported }
+        };
+        var response = await new AbsProvider(config, new ProviderTransport(factory))
+            .SearchAsync(new SearchRequest { Query = "missing" }, false, TestContext.Current.CancellationToken);
+        Assert.Empty(response.Candidates);
+        Assert.Single(response.Warnings);
+    }
+
+    [Fact]
+    public async Task Abs_malformed_matches_shape_is_rejected()
+    {
+        var factory = new TestHttpFactory((_, _) => Task.FromResult(TestHttpFactory.Json("{\"matches\":{}}")));
+        var provider = new AbsProvider(Config("abs"), new ProviderTransport(factory));
+        var exception = await Assert.ThrowsAsync<ProviderException>(() =>
+            provider.SearchAsync(new SearchRequest { Query = "x" }, false, TestContext.Current.CancellationToken));
+        Assert.Equal("invalid_response", exception.Kind);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized, "http_auth")]
+    [InlineData(HttpStatusCode.TooManyRequests, "http_rate_limit")]
+    [InlineData(HttpStatusCode.InternalServerError, "http_server")]
+    public async Task Abs_http_failures_are_classified(HttpStatusCode status, string expectedKind)
+    {
+        var factory = new TestHttpFactory((_, _) => Task.FromResult(TestHttpFactory.Json("{}", status)));
+        var provider = new AbsProvider(Config("abs"), new ProviderTransport(factory));
+        var exception = await Assert.ThrowsAsync<ProviderException>(() =>
+            provider.SearchAsync(new SearchRequest { Query = "x" }, false, TestContext.Current.CancellationToken));
+        Assert.Equal(expectedKind, exception.Kind);
+    }
+
+    [Fact]
+    public async Task Oversized_provider_response_is_rejected_before_parsing()
+    {
+        var factory = new TestHttpFactory((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(new byte[10 * 1024 * 1024 + 1])
+        }));
+        var provider = new AbsProvider(Config("abs"), new ProviderTransport(factory));
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            provider.SearchAsync(new SearchRequest { Query = "x" }, true, TestContext.Current.CancellationToken));
+    }
+
     private static ProviderConfig Config(string type) => new()
     {
         Id = type,

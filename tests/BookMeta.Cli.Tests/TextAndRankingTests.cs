@@ -48,6 +48,15 @@ public sealed class TextAndRankingTests
         Assert.NotEmpty(result.Warnings);
     }
 
+    [Fact]
+    public void Missing_optional_provider_metadata_does_not_zero_score()
+    {
+        var result = Result("Dune", string.Empty) with { Authors = [] };
+        _ = new ResultRanker().Rank(new SearchRequest { Title = "Dune", Author = "Frank Herbert" }, [result]);
+        Assert.Equal(100, result.Score);
+        Assert.NotEqual("exact", result.Confidence);
+    }
+
     private static SearchResult Result(string title, string author) => new()
     {
         Provider = "test",
