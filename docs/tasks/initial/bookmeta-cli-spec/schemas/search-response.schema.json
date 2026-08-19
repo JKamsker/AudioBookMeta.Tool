@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/bookmeta/search-response.schema.json",
+  "title": "bookmeta SearchResponse",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "request",
+    "results",
+    "provider_status",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "request": {
+      "type": "object"
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "$ref": "search-result.schema.json"
+      }
+    },
+    "provider_status": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "provider",
+          "status"
+        ],
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "empty",
+              "partial",
+              "error",
+              "timeout",
+              "rate_limited",
+              "skipped"
+            ]
+          },
+          "elapsed_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "request_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

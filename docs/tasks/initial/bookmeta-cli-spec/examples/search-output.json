@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "request": {
+    "query": "proj hail",
+    "author": "weir",
+    "providers": ["libex", "audiosilo"]
+  },
+  "results": [
+    {
+      "provider": "libex",
+      "provider_type": "libex",
+      "provider_record_id": "example-id",
+      "title": "Project Hail Mary",
+      "subtitle": null,
+      "authors": ["Andy Weir"],
+      "narrators": [],
+      "series": [],
+      "identifiers": {"asin": [], "isbn10": [], "isbn13": [], "other": {}},
+      "publisher": null,
+      "published_year": null,
+      "release_date": null,
+      "language": null,
+      "duration_seconds": null,
+      "genres": [],
+      "tags": [],
+      "cover_url": null,
+      "description": null,
+      "source_url": null,
+      "score": 97.0,
+      "confidence": "high",
+      "work_cluster_id": "example-work-cluster",
+      "edition_cluster_id": "example-edition-cluster",
+      "warnings": []
+    }
+  ],
+  "provider_status": [
+    {"provider": "libex", "status": "ok", "elapsed_ms": 180, "candidate_count": 10, "request_count": 2},
+    {"provider": "audiosilo", "status": "ok", "elapsed_ms": 110, "candidate_count": 4, "request_count": 1}
+  ],
+  "warnings": []
+}

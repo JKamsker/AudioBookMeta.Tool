@@ -1,0 +1,58 @@
+---
+id: community-providers
+title: Metadata Providers
+sidebar_position: 3
+---
+
+Custom book metadata providers can be added to your Audiobookshelf server through the `Item Metadata Tools` in the server settings.
+To add a custom provider you will need the address of the provider (a URL if a public community provider or the IP and port if you're running the custom provider yourself).
+If an authorization token is needed you will also add that here.
+
+![Adding Custom Metadata Provider](/pages/custom_metadata/adding_provider.png)
+
+## Creating a custom provider
+
+The request and response format that ABS expects for the API is defined in [this OpenAPI spec](https://github.com/advplyr/audiobookshelf/blob/master/custom-metadata-provider-specification.yaml).
+
+## Community providers
+
+:::warning
+
+The following projects are not maintained by the Audiobookshelf team nor did any of the Audiobookshelf team members check them for security issues. **Use at your own risk.**
+
+:::
+
+These custom metadata providers have been made by the community and are not maintained as part of the core project.
+Please refer to the provider documentation for information about how to set up the provider and the authorization value.
+
+Issues with these providers should be brought up to the provider author and not in the main ABS repositories.
+
+If you have made a custom provider and want to share, you can [open a PR for this file](https://github.com/audiobookshelf/audiobookshelf-docs/blob/master/docs/documentation/community/community-providers.md) to add your information to the table.
+
+| Provider         | Repository                                         | Notes                                                                                                                                                     |
+| ---------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| abs-tract        | https://github.com/ahobsonsayers/abs-tract         | Provides Goodreads and Kindle metadata                                                                                                                    |
+| lubimyczytac-abs | https://github.com/lakafior/lubimyczytac-abs       | Provides Lubimyczytac (biggest Polish site about books) metadata                                                                                          |
+| audioteka-abs    | https://github.com/lakafior/audioteka-abs          | Provides Audioteka (supports Polish and Czech language) metadata                                                                                          |
+| abs-agg          | https://github.com/vito0912/abs-agg                | Provides metadata from: ARD Audiothek, Audioteka, Big Finish, BookBeat, Goodreads, Graphic Audio, Hardcover, LibriVox, Storytel, Die drei ???, Soundbooth |
+| abs-storytel     | https://github.com/Revisor01/abs-storytel-provider | Provides Storytel metadata                                                                                                                                |
+| abs-opds         | https://github.com/DeXP/abs-opds                   | OPDS books catalog (biggest Russian: Flibusta, inxp-web) Note: does not provide syncing reading progress                                                  |
+| abs-audioknihi   | https://github.com/DeXP/abs-audioknihi             | Provides AudioKnihi metadata - AI generated covers and descriptions in Belarussian language                                                               |
+| Abs-Ximalaya     | https://github.com/shanyan-wcx/Abs-Ximalaya        | Provides Ximalaya (喜马拉雅) metadata                                                                                                                     |
+| abs-ranobedb     | https://github.com/kennethsible/abs-ranobedb       | Provides RanobeDB metadata for Japanese light novels                                                                            |
+| abs-czech-metadata  | https://github.com/stecik/audiobookshelf_czech_metadata      | Provides Czech metadata from many sources (Audiolibrix, Audioteka and more)                                                     ||
+| abs-metadata-podium | https://github.com/lkiesow/abs-metadata-podium  | Provides metadata and cover images from Podium Entertainment                                                                                              |
+| audiosilo-meta | https://github.com/kodestar/audiosilo-meta | Provides metadata from AudioSilo Meta, an open source community audiobook database (CC0) with narrators, series and chapters as first-class data. The provider endpoint is built into its API server (`metaserve`), which can be self-hosted |
+
+## Community hosted providers
+
+These providers are hosted by community members so you can easily add them to your ABS server without running additional software.
+These are not hosted by the ABS team or authors of the providers, so issues should not be opened with the provider or ABS repositories.
+
+If you host a custom provider and want to share, you can [open a PR for this file](https://github.com/audiobookshelf/audiobookshelf-docs/blob/master/docs/documentation/community/community-providers.md) to add your information to the table.
+
+| Provider | Address                                                                                                                                                                                                                                                                                                                                                                                                                              | Auth | Contact                                           | Notes                                                                                                                                         |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| abs-agg  | https://provider.vito0912.de/ardaudiothek<br/>https://provider.vito0912.de/audioteka/lang:pl<br/>https://provider.vito0912.de/bigfinish<br/>https://provider.vito0912.de/bookbeat/market:austria<br/>https://provider.vito0912.de/goodreads<br/>https://provider.vito0912.de/graphicaudio<br/>https://provider.vito0912.de/hardcover<br/>https://provider.vito0912.de/librivox<br/>https://provider.vito0912.de/storytel/language:en | abs  | Vito0912 on [GitHub](https://github.com/Vito0912) | Each provider has different<br/>optional parameters.<br/>See full [documentation](https://github.com/Vito0912/abs-agg/blob/main/Providers.md) |
+| abs-audioknihi-by | http://abs-audioknihi-by.dexp.in | none | DeXP on [GitHub](https://github.com/DeXP) | Please set up your own instance if you can, traffic is highly limited |
+| AudioSilo Meta | https://meta.audiosilo.app/abs | none | KodeStar on [GitHub](https://github.com/KodeStar) | Open source community audiobook database (CC0). Setup guide: [meta.audiosilo.app/audiobookshelf](https://meta.audiosilo.app/audiobookshelf) |

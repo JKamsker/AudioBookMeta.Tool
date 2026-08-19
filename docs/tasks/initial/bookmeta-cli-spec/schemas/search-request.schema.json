@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/bookmeta/search-request.schema.json",
+  "title": "bookmeta SearchRequest",
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "title": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "author": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "narrator": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "series": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "isbn": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "asin": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "language": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "region": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "limit_per_provider": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 10
+    },
+    "exact": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "additionalProperties": false
+}

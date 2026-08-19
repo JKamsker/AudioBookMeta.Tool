@@ -1,0 +1,18 @@
+# Seed registry: examples only. Provider instance configuration remains authoritative.
+
+[[provider_types]]
+id = "libex"
+adapter = "libex"
+description = "Rich Audible metadata API"
+default_base_url = "https://libexdb.com"
+
+[[provider_types]]
+id = "audiosilo"
+adapter = "audiosilo"
+description = "Open community audiobook metadata database"
+default_base_url = "https://meta.audiosilo.app"
+
+[[provider_types]]
+id = "abs"
+adapter = "abs"
+description = "Generic Audiobookshelf custom metadata provider"

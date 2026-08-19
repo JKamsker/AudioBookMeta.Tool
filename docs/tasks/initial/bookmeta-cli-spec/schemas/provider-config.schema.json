@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/bookmeta/provider-config.schema.json",
+  "title": "bookmeta ProviderConfig",
+  "type": "object",
+  "required": [
+    "type",
+    "base_url"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "base_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "auth": {
+      "type": "string"
+    },
+    "region": {
+      "type": "string"
+    },
+    "priority": {
+      "type": "integer"
+    },
+    "groups": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "timeout": {
+      "type": "string"
+    },
+    "allow_insecure_http": {
+      "type": "boolean",
+      "default": false
+    },
+    "query_params": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "string",
+          "number",
+          "boolean"
+        ]
+      }
+    },
+    "headers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": {
+        "enum": [
+          true,
+          false,
+          "unknown"
+        ]
+      }
+    }
+  },
+  "additionalProperties": true
+}

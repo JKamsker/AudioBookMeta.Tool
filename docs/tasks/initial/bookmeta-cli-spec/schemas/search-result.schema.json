@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/bookmeta/search-result.schema.json",
+  "title": "bookmeta SearchResult",
+  "type": "object",
+  "required": [
+    "provider",
+    "provider_type",
+    "title",
+    "authors",
+    "narrators",
+    "series",
+    "identifiers",
+    "score",
+    "warnings"
+  ],
+  "properties": {
+    "provider": {
+      "type": "string"
+    },
+    "provider_type": {
+      "type": "string"
+    },
+    "provider_record_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "title": {
+      "type": "string"
+    },
+    "subtitle": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "authors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "narrators": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "series": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "sequence": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "identifiers": {
+      "type": "object",
+      "required": [
+        "asin",
+        "isbn10",
+        "isbn13",
+        "other"
+      ],
+      "properties": {
+        "asin": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "isbn10": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "isbn13": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "other": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "array"
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "publisher": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "published_year": {
+      "type": [
+        "string",
+        "integer",
+        "null"
+      ]
+    },
+    "release_date": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "language": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "duration_seconds": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "genres": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "cover_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "description": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "confidence": {
+      "enum": [
+        "exact",
+        "high",
+        "medium",
+        "low",
+        null
+      ]
+    },
+    "work_cluster_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "edition_cluster_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "raw": {}
+  },
+  "additionalProperties": false
+}

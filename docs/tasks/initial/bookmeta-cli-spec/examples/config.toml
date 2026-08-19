@@ -1,0 +1,46 @@
+version = 1
+default_group = "default"
+
+[search]
+limit = 10
+limit_per_provider = 10
+provider_timeout = "4s"
+deadline = "8s"
+max_concurrency = 8
+cache_ttl = "15m"
+
+[providers.libex]
+type = "libex"
+base_url = "https://libexdb.com"
+enabled = true
+region = "us"
+priority = 100
+groups = ["default", "audiobook"]
+
+[providers.audiosilo]
+type = "audiosilo"
+base_url = "https://meta.audiosilo.app"
+enabled = true
+priority = 95
+groups = ["default", "audiobook", "open-data"]
+
+[providers.goodreads]
+type = "abs"
+base_url = "https://provider.vito0912.de/goodreads"
+auth = "literal:abs"
+enabled = true
+priority = 70
+groups = ["default", "books"]
+
+[providers.storytel_en]
+type = "abs"
+base_url = "https://provider.vito0912.de/storytel/language:en"
+auth = "literal:abs"
+enabled = true
+groups = ["audiobook"]
+
+[groups]
+default = ["libex", "audiosilo", "goodreads"]
+audiobook = ["libex", "audiosilo", "storytel_en"]
+books = ["goodreads", "audiosilo"]
+open-data = ["audiosilo"]
