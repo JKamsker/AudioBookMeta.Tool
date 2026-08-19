@@ -43,7 +43,8 @@ public sealed class SearchEngine(
         var response = new SearchResponse
         {
             Request = RequestOutput(request, providers.Select(provider => provider.Id).ToList()),
-            Results = limited.ToList(), ProviderStatus = orderedStatuses,
+            Results = limited.ToList(),
+            ProviderStatus = orderedStatuses,
             Warnings = warnings.Distinct(StringComparer.Ordinal).ToList()
         };
         return new SearchExecution(response, exitCode);
@@ -83,8 +84,11 @@ public sealed class SearchEngine(
                     warnings.Add($"{provider.Id}: {warning}");
                 statuses.Add(new ProviderStatus
                 {
-                    Provider = provider.Id, Status = response.Candidates.Count == 0 ? "empty" : "ok", ElapsedMs = timer.ElapsedMilliseconds,
-                    CandidateCount = response.Candidates.Count, RequestCount = cacheHit ? 0 : response.RequestCount,
+                    Provider = provider.Id,
+                    Status = response.Candidates.Count == 0 ? "empty" : "ok",
+                    ElapsedMs = timer.ElapsedMilliseconds,
+                    CandidateCount = response.Candidates.Count,
+                    RequestCount = cacheHit ? 0 : response.RequestCount,
                     Message = cacheHit ? "cache hit" : null
                 });
             }
@@ -118,7 +122,17 @@ public sealed class SearchEngine(
 
     private static object RequestOutput(SearchRequest request, List<string> providers) => new
     {
-        request.Query, request.Title, request.Author, request.Narrator, request.Series, request.Isbn, request.Asin,
-        request.Language, request.Region, request.LimitPerProvider, request.Exact, Providers = providers
+        request.Query,
+        request.Title,
+        request.Author,
+        request.Narrator,
+        request.Series,
+        request.Isbn,
+        request.Asin,
+        request.Language,
+        request.Region,
+        request.LimitPerProvider,
+        request.Exact,
+        Providers = providers
     };
 }

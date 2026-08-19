@@ -197,9 +197,16 @@ public sealed class AudioSiloProvider(ProviderConfig config, ProviderTransport t
             return null;
         return new SearchResult
         {
-            Provider = Id, ProviderType = AdapterType, ProviderRecordId = $"work/{JsonFields.String(item, "id")}", Title = title,
-            Authors = JsonFields.Strings(item, "authors"), Narrators = JsonFields.Strings(item, "narrators"), Series = JsonFields.Series(item),
-            Identifiers = new Identifiers(), CoverUrl = JsonFields.String(item, "cover_url"), Raw = includeRaw ? item.Clone() : null
+            Provider = Id,
+            ProviderType = AdapterType,
+            ProviderRecordId = $"work/{JsonFields.String(item, "id")}",
+            Title = title,
+            Authors = JsonFields.Strings(item, "authors"),
+            Narrators = JsonFields.Strings(item, "narrators"),
+            Series = JsonFields.Series(item),
+            Identifiers = new Identifiers(),
+            CoverUrl = JsonFields.String(item, "cover_url"),
+            Raw = includeRaw ? item.Clone() : null
         };
     }
 
@@ -214,15 +221,25 @@ public sealed class AudioSiloProvider(ProviderConfig config, ProviderTransport t
         var identifiers = recording is { ValueKind: JsonValueKind.Object } ? RecordingIdentifiers(recording.Value) : new Identifiers();
         return new SearchResult
         {
-            Provider = Id, ProviderType = AdapterType, ProviderRecordId = recording is { ValueKind: JsonValueKind.Object }
+            Provider = Id,
+            ProviderType = AdapterType,
+            ProviderRecordId = recording is { ValueKind: JsonValueKind.Object }
                 ? $"work/{JsonFields.String(item, "id")}/recording/{JsonFields.String(recording.Value, "id")}" : $"work/{JsonFields.String(item, "id")}",
-            Title = title, Subtitle = JsonFields.String(item, "subtitle"), Authors = JsonFields.Strings(item, "authors"),
-            Narrators = recording is { ValueKind: JsonValueKind.Object } ? JsonFields.Strings(recording.Value, "narrators") : [], Series = JsonFields.Series(item),
-            Identifiers = identifiers, Publisher = recording is { ValueKind: JsonValueKind.Object } ? JsonFields.String(recording.Value, "publisher") : null,
-            PublishedYear = JsonFields.String(item, "first_published"), ReleaseDate = recording is { ValueKind: JsonValueKind.Object } ? JsonFields.String(recording.Value, "release_date") : null,
-            Language = JsonFields.String(item, "language"), DurationSeconds = recording is { ValueKind: JsonValueKind.Object } && JsonFields.Integer(recording.Value, "runtime_min") is { } minutes ? minutes * 60 : null,
-            Genres = JsonFields.Strings(item, "genres"), CoverUrl = recording is { ValueKind: JsonValueKind.Object } ? JsonFields.String(recording.Value, "cover_url") : null,
-            Description = JsonFields.String(item, "description"), Raw = includeRaw ? item.Clone() : null
+            Title = title,
+            Subtitle = JsonFields.String(item, "subtitle"),
+            Authors = JsonFields.Strings(item, "authors"),
+            Narrators = recording is { ValueKind: JsonValueKind.Object } ? JsonFields.Strings(recording.Value, "narrators") : [],
+            Series = JsonFields.Series(item),
+            Identifiers = identifiers,
+            Publisher = recording is { ValueKind: JsonValueKind.Object } ? JsonFields.String(recording.Value, "publisher") : null,
+            PublishedYear = JsonFields.String(item, "first_published"),
+            ReleaseDate = recording is { ValueKind: JsonValueKind.Object } ? JsonFields.String(recording.Value, "release_date") : null,
+            Language = JsonFields.String(item, "language"),
+            DurationSeconds = recording is { ValueKind: JsonValueKind.Object } && JsonFields.Integer(recording.Value, "runtime_min") is { } minutes ? minutes * 60 : null,
+            Genres = JsonFields.Strings(item, "genres"),
+            CoverUrl = recording is { ValueKind: JsonValueKind.Object } ? JsonFields.String(recording.Value, "cover_url") : null,
+            Description = JsonFields.String(item, "description"),
+            Raw = includeRaw ? item.Clone() : null
         };
     }
 

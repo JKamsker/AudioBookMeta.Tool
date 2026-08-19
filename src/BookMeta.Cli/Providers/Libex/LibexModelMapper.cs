@@ -13,15 +13,24 @@ internal sealed class LibexModelMapper(string providerId)
         var releaseDate = PrimitiveString(item.ReleaseDate);
         return new SearchResult
         {
-            Provider = providerId, ProviderType = "libex", ProviderRecordId = item.Asin, Title = title,
-            Subtitle = PrimitiveString(item.Subtitle), Authors = item.Authors?.Select(author => PrimitiveString(author.Name)).Where(value => !string.IsNullOrWhiteSpace(value)).Select(value => value!).ToList() ?? [],
+            Provider = providerId,
+            ProviderType = "libex",
+            ProviderRecordId = item.Asin,
+            Title = title,
+            Subtitle = PrimitiveString(item.Subtitle),
+            Authors = item.Authors?.Select(author => PrimitiveString(author.Name)).Where(value => !string.IsNullOrWhiteSpace(value)).Select(value => value!).ToList() ?? [],
             Narrators = item.Narrators?.Select(narrator => narrator.Name).Where(value => !string.IsNullOrWhiteSpace(value)).Select(value => value!).ToList() ?? [],
             Series = item.Series?.Select(series => new SeriesEntry(PrimitiveString(series.Name) ?? string.Empty, PrimitiveString(series.Position))).Where(series => series.Name.Length > 0).ToList() ?? [],
-            Identifiers = JsonFields.Identifiers(item.Asin, PrimitiveString(item.Isbn), Other(item)), Publisher = PrimitiveString(item.Publisher),
-            PublishedYear = releaseDate?.Length >= 4 ? releaseDate[..4] : null, ReleaseDate = releaseDate, Language = PrimitiveString(item.Language),
+            Identifiers = JsonFields.Identifiers(item.Asin, PrimitiveString(item.Isbn), Other(item)),
+            Publisher = PrimitiveString(item.Publisher),
+            PublishedYear = releaseDate?.Length >= 4 ? releaseDate[..4] : null,
+            ReleaseDate = releaseDate,
+            Language = PrimitiveString(item.Language),
             DurationSeconds = PrimitiveInteger(item.LengthMinutes) is { } minutes ? minutes * 60 : null,
             Genres = item.Genres?.Select(genre => PrimitiveString(genre.Name)).Where(value => !string.IsNullOrWhiteSpace(value)).Select(value => value!).ToList() ?? [],
-            CoverUrl = PrimitiveString(item.ImageUrl), Description = PrimitiveString(item.Description) ?? PrimitiveString(item.Summary), SourceUrl = PrimitiveString(item.Link)
+            CoverUrl = PrimitiveString(item.ImageUrl),
+            Description = PrimitiveString(item.Description) ?? PrimitiveString(item.Summary),
+            SourceUrl = PrimitiveString(item.Link)
         };
     }
 

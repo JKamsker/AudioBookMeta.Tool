@@ -78,12 +78,25 @@ public sealed class AbsProvider(ProviderConfig config, ProviderTransport transpo
         var published = JsonFields.String(item, "publishedYear", "published_year");
         return new SearchResult
         {
-            Provider = Id, ProviderType = AdapterType, ProviderRecordId = JsonFields.String(item, "id", "bookId", "asin", "isbn"),
-            Title = title, Subtitle = JsonFields.String(item, "subtitle"), Authors = JsonFields.Strings(item, "authors", "author"), Narrators = JsonFields.Strings(item, "narrators", "narrator", "lector"),
-            Series = JsonFields.Series(item), Identifiers = JsonFields.Identifiers(JsonFields.String(item, "asin"), JsonFields.String(item, "isbn")),
-            Publisher = JsonFields.String(item, "publisher"), PublishedYear = published, ReleaseDate = JsonFields.String(item, "releaseDate", "release_date"),
-            Language = JsonFields.String(item, "language"), DurationSeconds = JsonFields.Integer(item, "duration"), Genres = JsonFields.Strings(item, "genres"), Tags = JsonFields.Strings(item, "tags"),
-            CoverUrl = JsonFields.String(item, "cover", "coverUrl"), Description = JsonFields.String(item, "description"), SourceUrl = JsonFields.String(item, "sourceUrl", "link"),
+            Provider = Id,
+            ProviderType = AdapterType,
+            ProviderRecordId = JsonFields.String(item, "id", "bookId", "asin", "isbn"),
+            Title = title,
+            Subtitle = JsonFields.String(item, "subtitle"),
+            Authors = JsonFields.Strings(item, "authors", "author"),
+            Narrators = JsonFields.Strings(item, "narrators", "narrator", "lector"),
+            Series = JsonFields.Series(item),
+            Identifiers = JsonFields.Identifiers(JsonFields.String(item, "asin"), JsonFields.String(item, "isbn")),
+            Publisher = JsonFields.String(item, "publisher"),
+            PublishedYear = published,
+            ReleaseDate = JsonFields.String(item, "releaseDate", "release_date"),
+            Language = JsonFields.String(item, "language"),
+            DurationSeconds = JsonFields.Integer(item, "duration"),
+            Genres = JsonFields.Strings(item, "genres"),
+            Tags = JsonFields.Strings(item, "tags"),
+            CoverUrl = JsonFields.String(item, "cover", "coverUrl"),
+            Description = JsonFields.String(item, "description"),
+            SourceUrl = JsonFields.String(item, "sourceUrl", "link"),
             Raw = includeRaw ? item.Clone() : null
         };
     }

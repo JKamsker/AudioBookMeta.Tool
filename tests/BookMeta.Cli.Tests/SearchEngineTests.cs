@@ -63,6 +63,11 @@ public sealed class SearchEngineTests
 
     private static SearchOptions Options(bool strict) => new()
     {
-        Includes = [], Groups = [], Excludes = [], Fresh = true, IncludeRaw = true, Strict = strict
+        Includes = [],
+        Groups = [],
+        Excludes = [],
+        Fresh = true,
+        IncludeRaw = true,
+        Strict = strict
     };
 }

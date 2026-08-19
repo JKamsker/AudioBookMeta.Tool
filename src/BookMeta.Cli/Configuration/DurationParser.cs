@@ -13,7 +13,10 @@ public static class DurationParser
         value = value.Trim();
         var units = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase)
         {
-            ["ms"] = 0.001, ["s"] = 1, ["m"] = 60, ["h"] = 3600
+            ["ms"] = 0.001,
+            ["s"] = 1,
+            ["m"] = 60,
+            ["h"] = 3600
         };
         foreach (var (suffix, seconds) in units)
         {

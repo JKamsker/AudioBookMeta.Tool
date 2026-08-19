@@ -92,15 +92,31 @@ public sealed class SearchCommand(ConfigLoader loader, SearchEngine engine, Sear
             $"config={config.SourcePath}; timeout={providerTimeout ?? config.Search.ProviderTimeout}; deadline={deadline ?? config.Search.Deadline}; limit={settings.Limit ?? config.Search.Limit}");
         var request = new SearchRequest
         {
-            Query = settings.Query, Title = settings.Title, Author = settings.Author, Narrator = settings.Narrator,
-            Series = settings.Series, Isbn = settings.Isbn, Asin = settings.Asin, Language = settings.Language, Region = settings.Region,
-            LimitPerProvider = settings.LimitPerProvider ?? config.Search.LimitPerProvider, Exact = settings.Exact, Editions = settings.Editions
+            Query = settings.Query,
+            Title = settings.Title,
+            Author = settings.Author,
+            Narrator = settings.Narrator,
+            Series = settings.Series,
+            Isbn = settings.Isbn,
+            Asin = settings.Asin,
+            Language = settings.Language,
+            Region = settings.Region,
+            LimitPerProvider = settings.LimitPerProvider ?? config.Search.LimitPerProvider,
+            Exact = settings.Exact,
+            Editions = settings.Editions
         };
         var execution = await engine.ExecuteAsync(config, request, new SearchOptions
         {
-            Includes = settings.Providers, Groups = settings.Groups, Excludes = settings.Excludes, Limit = settings.Limit,
-            ProviderTimeout = providerTimeout, Deadline = deadline, Fresh = settings.Fresh,
-            NoDedupe = settings.NoDedupe, Strict = settings.Strict, IncludeRaw = settings.Raw
+            Includes = settings.Providers,
+            Groups = settings.Groups,
+            Excludes = settings.Excludes,
+            Limit = settings.Limit,
+            ProviderTimeout = providerTimeout,
+            Deadline = deadline,
+            Fresh = settings.Fresh,
+            NoDedupe = settings.NoDedupe,
+            Strict = settings.Strict,
+            IncludeRaw = settings.Raw
         }, cancellationToken);
         console.Verbose(settings.Verbose, $"providers={string.Join(',', execution.Response.ProviderStatus.Select(status => status.Provider))}");
         if (settings.Json)

@@ -27,8 +27,16 @@ public sealed class ProvidersShowCommand(ConfigLoader loader, ProviderFactory fa
             schema_version = 1,
             provider = new
             {
-                id = provider.Id, adapter_type = provider.Type, base_url = provider.BaseUrl.ToString(), provider.Enabled, provider.Region,
-                provider.Priority, provider.Groups, timeout = provider.Timeout?.ToString(), provider.AllowInsecureHttp, provider.AppendSearchPath,
+                id = provider.Id,
+                adapter_type = provider.Type,
+                base_url = provider.BaseUrl.ToString(),
+                provider.Enabled,
+                provider.Region,
+                provider.Priority,
+                provider.Groups,
+                timeout = provider.Timeout?.ToString(),
+                provider.AllowInsecureHttp,
+                provider.AppendSearchPath,
                 auth = provider.Auth is null ? null : $"{provider.Auth.Split(':', 2)[0]}:<redacted>",
                 headers = provider.Headers.ToDictionary(pair => pair.Key, pair => IsSensitive(pair.Key, pair.Value) ? "<redacted>" : pair.Value),
                 provider.QueryParams,

@@ -164,13 +164,25 @@ public sealed class LibexProvider(ProviderConfig config, ProviderTransport trans
         var releaseDate = JsonFields.String(item, "releaseDate");
         return new SearchResult
         {
-            Provider = Id, ProviderType = AdapterType, ProviderRecordId = asin, Title = title, Subtitle = JsonFields.String(item, "subtitle"),
-            Authors = JsonFields.Strings(item, "authors"), Narrators = JsonFields.Strings(item, "narrators"), Series = JsonFields.Series(item),
-            Identifiers = JsonFields.Identifiers(asin, JsonFields.String(item, "isbn"), Other(item)), Publisher = JsonFields.String(item, "publisher"),
-            PublishedYear = releaseDate?.Length >= 4 ? releaseDate[..4] : null, ReleaseDate = releaseDate, Language = JsonFields.String(item, "language"),
+            Provider = Id,
+            ProviderType = AdapterType,
+            ProviderRecordId = asin,
+            Title = title,
+            Subtitle = JsonFields.String(item, "subtitle"),
+            Authors = JsonFields.Strings(item, "authors"),
+            Narrators = JsonFields.Strings(item, "narrators"),
+            Series = JsonFields.Series(item),
+            Identifiers = JsonFields.Identifiers(asin, JsonFields.String(item, "isbn"), Other(item)),
+            Publisher = JsonFields.String(item, "publisher"),
+            PublishedYear = releaseDate?.Length >= 4 ? releaseDate[..4] : null,
+            ReleaseDate = releaseDate,
+            Language = JsonFields.String(item, "language"),
             DurationSeconds = JsonFields.Integer(item, "lengthMinutes") is { } minutes ? minutes * 60 : null,
-            Genres = JsonFields.Strings(item, "genres"), CoverUrl = JsonFields.String(item, "imageUrl"), Description = JsonFields.String(item, "description", "summary"),
-            SourceUrl = JsonFields.String(item, "link"), Raw = includeRaw ? item.Clone() : null
+            Genres = JsonFields.Strings(item, "genres"),
+            CoverUrl = JsonFields.String(item, "imageUrl"),
+            Description = JsonFields.String(item, "description", "summary"),
+            SourceUrl = JsonFields.String(item, "link"),
+            Raw = includeRaw ? item.Clone() : null
         };
     }
 

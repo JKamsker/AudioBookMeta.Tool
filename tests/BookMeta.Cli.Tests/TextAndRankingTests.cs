@@ -50,6 +50,9 @@ public sealed class TextAndRankingTests
 
     private static SearchResult Result(string title, string author) => new()
     {
-        Provider = "test", ProviderType = "abs", Title = title, Authors = [author]
+        Provider = "test",
+        ProviderType = "abs",
+        Title = title,
+        Authors = [author]
     };
 }

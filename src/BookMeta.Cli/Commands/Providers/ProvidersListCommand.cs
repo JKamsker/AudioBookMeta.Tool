@@ -15,8 +15,11 @@ public sealed class ProvidersListCommand(ConfigLoader loader, ProviderFactory fa
         var config = loader.Load(settings.ConfigPath);
         var rows = config.Providers.Values.OrderByDescending(provider => provider.Priority).ThenBy(provider => provider.Id).Select(provider => new
         {
-            id = provider.Id, adapter_type = provider.Type, enabled = provider.Enabled,
-            groups = Groups(config, provider), base_host = provider.BaseUrl.Host,
+            id = provider.Id,
+            adapter_type = provider.Type,
+            enabled = provider.Enabled,
+            groups = Groups(config, provider),
+            base_host = provider.BaseUrl.Host,
             capabilities = CompactCapabilities(factory.Create(provider).Capabilities)
         }).ToList();
         if (settings.Json)
@@ -40,8 +43,12 @@ public sealed class ProvidersListCommand(ConfigLoader loader, ProviderFactory fa
     {
         var labels = new Dictionary<string, string>
         {
-            ["search"] = "search", ["quick_search"] = "quick", ["get_by_id"] = "get",
-            ["asin_filter"] = "ASIN", ["isbn_filter"] = "ISBN", ["health"] = "health"
+            ["search"] = "search",
+            ["quick_search"] = "quick",
+            ["get_by_id"] = "get",
+            ["asin_filter"] = "ASIN",
+            ["isbn_filter"] = "ISBN",
+            ["health"] = "health"
         };
         return labels.Where(item => capabilities[item.Key] == BookMeta.Model.CapabilityState.Supported).Select(item => item.Value).ToList();
     }

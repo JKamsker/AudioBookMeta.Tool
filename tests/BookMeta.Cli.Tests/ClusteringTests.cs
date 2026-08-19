@@ -25,7 +25,11 @@ public sealed class ClusteringTests
 
     private static SearchResult Result(string provider, string isbn, string narrator) => new()
     {
-        Provider = provider, ProviderType = "abs", Title = "Project Hail Mary", Authors = ["Andy Weir"], Narrators = [narrator],
+        Provider = provider,
+        ProviderType = "abs",
+        Title = "Project Hail Mary",
+        Authors = ["Andy Weir"],
+        Narrators = [narrator],
         Identifiers = new Identifiers { Isbn13 = [isbn] }
     };
 }

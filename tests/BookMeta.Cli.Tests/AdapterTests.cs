@@ -98,6 +98,9 @@ public sealed class AdapterTests
 
     private static ProviderConfig Config(string type) => new()
     {
-        Id = type, Type = type, BaseUrl = new Uri("https://provider.example"), Enabled = true
+        Id = type,
+        Type = type,
+        BaseUrl = new Uri("https://provider.example"),
+        Enabled = true
     };
 }
