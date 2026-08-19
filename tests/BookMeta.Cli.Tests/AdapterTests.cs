@@ -61,6 +61,29 @@ public sealed class AdapterTests
     }
 
     [Fact]
+    public async Task AudioSilo_editions_expand_each_work_recording_with_bounded_detail_requests()
+    {
+        var requests = 0;
+        var factory = new TestHttpFactory((request, _) =>
+        {
+            requests++;
+            return Task.FromResult(request.RequestUri!.AbsolutePath.EndsWith("/search", StringComparison.Ordinal)
+                ? TestHttpFactory.Json("""{"results":[{"kind":"work","id":"the-work","title":"The Work","authors":[],"series":null,"narrators":[]}]}""")
+                : TestHttpFactory.Json("""{"id":"the-work","title":"The Work","authors":[],"series":[],"recordings":[{"id":"first","isbn":["9780441172719"],"narrators":[]},{"id":"second","isbn":[],"narrators":[]}]}"""));
+        });
+        var config = Config("audiosilo");
+        var provider = new AudioSiloProvider(config, new ProviderTransport(factory), new KiotaClientFactory(factory));
+
+        var response = await provider.SearchAsync(new SearchRequest { Query = "the work", Editions = true }, false, TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, requests);
+        Assert.Equal(2, response.RequestCount);
+        Assert.Collection(response.Candidates,
+            first => Assert.Equal("work/the-work/recording/first", first.ProviderRecordId),
+            second => Assert.Equal("work/the-work/recording/second", second.ProviderRecordId));
+    }
+
+    [Fact]
     public async Task Authenticated_cross_host_redirect_is_refused()
     {
         var factory = new TestHttpFactory((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.Redirect)

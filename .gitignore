@@ -4,5 +4,6 @@
 .idea/
 .vscode/
 TestResults/
+**/logs/bookmeta-error-*.log
 *.user
 *.suo

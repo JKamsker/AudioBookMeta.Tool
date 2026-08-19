@@ -69,7 +69,15 @@ public sealed class CliContractTests
         return new ProcessResult(process.ExitCode, await stdout, await stderr);
     }
 
-    private static string SampleConfig() => Path.Combine(RepositoryRoot(), "docs", "tasks", "initial", "bookmeta-cli-spec", "examples", "config.toml");
+    private static string SampleConfig()
+    {
+        var source = Path.Combine(RepositoryRoot(), "docs", "tasks", "initial", "bookmeta-cli-spec", "examples", "config.toml");
+        var directory = Path.Combine(Path.GetTempPath(), $"bookmeta-cli-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        var target = Path.Combine(directory, "config.toml");
+        File.Copy(source, target);
+        return target;
+    }
 
     private static string RepositoryRoot()
     {

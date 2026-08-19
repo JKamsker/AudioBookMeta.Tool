@@ -38,7 +38,7 @@ services.AddHttpClient("provider", client => client.Timeout = Timeout.InfiniteTi
     {
         AllowAutoRedirect = false,
         AutomaticDecompression = DecompressionMethods.All,
-        ConnectTimeout = TimeSpan.FromSeconds(3),
+        ConnectTimeout = Timeout.InfiniteTimeSpan,
         MaxConnectionsPerServer = 16
     });
 

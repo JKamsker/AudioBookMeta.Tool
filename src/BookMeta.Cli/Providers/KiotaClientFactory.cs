@@ -32,7 +32,7 @@ public sealed class KiotaClientFactory(IHttpClientFactory clients)
             if (config.Auth is not null)
                 request.Headers.TryAdd("Authorization", SecretResolver.Resolve(config.Auth));
             foreach (var header in config.Headers)
-                request.Headers.TryAdd(header.Key, header.Value);
+                request.Headers.TryAdd(header.Key, SecretResolver.HasValidSyntax(header.Value) ? SecretResolver.Resolve(header.Value) : header.Value);
             return Task.CompletedTask;
         }
     }

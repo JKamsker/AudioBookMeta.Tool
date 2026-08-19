@@ -31,6 +31,8 @@ public sealed class SearchEngine(
         await Task.WhenAll(tasks);
 
         var ranked = ranker.Rank(request, candidates);
+        if (request.Exact)
+            ranked = ranked.Where(result => result.Score > 0).ToList();
         clusterer.AssignClusters(ranked, options.NoDedupe);
         var limit = options.Limit ?? config.Search.Limit;
         var limited = Limit(ranked, limit, options.NoDedupe);

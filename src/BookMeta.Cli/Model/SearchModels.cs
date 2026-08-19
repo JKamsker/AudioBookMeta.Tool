@@ -18,6 +18,9 @@ public sealed record SearchRequest
     public bool Exact { get; init; }
 
     [JsonIgnore]
+    public bool Editions { get; init; }
+
+    [JsonIgnore]
     public bool HasInput => new[] { Query, Title, Author, Narrator, Series, Isbn, Asin }
         .Any(value => !string.IsNullOrWhiteSpace(value));
 }
@@ -73,6 +76,7 @@ public sealed record ProviderStatus
     public long ElapsedMs { get; init; }
     public int CandidateCount { get; init; }
     public int RequestCount { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Message { get; init; }
 }
 

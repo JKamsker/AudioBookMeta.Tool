@@ -39,6 +39,11 @@ public static class ConfigValidator
             {
                 if (header.Key.Equals("Authorization", StringComparison.OrdinalIgnoreCase))
                     errors.Add($"provider '{provider.Id}' must use auth instead of headers.Authorization");
+                if (resolveSecrets && SecretResolver.HasValidSyntax(header.Value))
+                {
+                    try { _ = SecretResolver.Resolve(header.Value); }
+                    catch (BookMetaException exception) { errors.Add($"provider '{provider.Id}' header '{header.Key}': {exception.Message}"); }
+                }
             }
         }
 
@@ -81,5 +86,13 @@ public static class ConfigValidator
 
     private static bool IsLocal(string host)
         => host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || host.EndsWith(".local", StringComparison.OrdinalIgnoreCase) ||
-           System.Net.IPAddress.TryParse(host, out var ip) && (System.Net.IPAddress.IsLoopback(ip) || ip.IsIPv6LinkLocal || ip.GetAddressBytes()[0] is 10 or 127 || (ip.GetAddressBytes()[0] == 192 && ip.GetAddressBytes()[1] == 168));
+           System.Net.IPAddress.TryParse(host, out var ip) && IsPrivate(ip);
+
+    private static bool IsPrivate(System.Net.IPAddress ip)
+    {
+        if (System.Net.IPAddress.IsLoopback(ip) || ip.IsIPv6LinkLocal || ip.IsIPv6SiteLocal)
+            return true;
+        var bytes = ip.GetAddressBytes();
+        return bytes.Length == 4 && (bytes[0] is 10 or 127 || bytes[0] == 192 && bytes[1] == 168 || bytes[0] == 172 && bytes[1] is >= 16 and <= 31);
+    }
 }

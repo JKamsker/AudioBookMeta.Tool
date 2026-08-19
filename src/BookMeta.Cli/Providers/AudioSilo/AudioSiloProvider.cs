@@ -40,7 +40,11 @@ public sealed class AudioSiloProvider(ProviderConfig config, ProviderTransport t
             throw new ProviderException(Id, "invalid_response", "AudioSilo search response is missing a results array");
         var candidates = results.EnumerateArray().Where(item => JsonFields.String(item, "kind") == "work")
             .Select(item => ParseWorkCard(item, true)).Where(item => item is not null).Select(item => item!).ToList();
-        return new ProviderSearchResponse { Candidates = candidates, RequestCount = 1 };
+        if (!request.Editions)
+            return new ProviderSearchResponse { Candidates = candidates, RequestCount = 1 };
+        var workIds = candidates.Select(WorkId).Where(id => id is not null).Select(id => id!).ToList();
+        var editions = await AudioSiloEditionExpander.ExpandAsync(workIds, GetWorkEditionsRawAsync, cancellationToken);
+        return new ProviderSearchResponse { Candidates = editions, RequestCount = 1 + workIds.Count };
     }
 
     public async Task<SearchResult> GetAsync(string id, bool includeRaw, CancellationToken cancellationToken)
@@ -93,9 +97,13 @@ public sealed class AudioSiloProvider(ProviderConfig config, ProviderTransport t
             options.QueryParameters.Q = text;
             options.QueryParameters.Limit = Math.Min(request.LimitPerProvider, 100);
         }, cancellationToken), cancellationToken);
-        var candidates = response?.Results?.Select(result => result.WorkResult).Where(work => work is not null)
-            .Select(work => mapper.MapCard(work!)).Where(result => result is not null).Select(result => result!).ToList() ?? [];
-        return new ProviderSearchResponse { Candidates = candidates, RequestCount = 1 };
+        var works = response?.Results?.Select(result => result.WorkResult).Where(work => work is not null).Select(work => work!).ToList() ?? [];
+        var candidates = works.Select(mapper.MapCard).Where(result => result is not null).Select(result => result!).ToList();
+        if (!request.Editions)
+            return new ProviderSearchResponse { Candidates = candidates, RequestCount = 1 };
+        var workIds = works.Select(work => work.Id).Where(id => !string.IsNullOrWhiteSpace(id)).Select(id => id!).ToList();
+        var editions = await AudioSiloEditionExpander.ExpandAsync(workIds, GetWorkEditionsTypedAsync, cancellationToken);
+        return new ProviderSearchResponse { Candidates = editions, RequestCount = 1 + workIds.Count };
     }
 
     private async Task<SearchResult> GetTypedAsync(string id, CancellationToken cancellationToken)
@@ -127,6 +135,12 @@ public sealed class AudioSiloProvider(ProviderConfig config, ProviderTransport t
         var work = await KiotaInvoker.InvokeAsync(Id, () => client.Api.V1.Works[workId].GetAsync(cancellationToken: cancellationToken), cancellationToken);
         return work is null || mapper.MapDetail(work, recordingId) is not { } result
             ? throw new ProviderException(Id, "invalid_response", "AudioSilo work response has no title") : result;
+    }
+
+    private async Task<IReadOnlyList<SearchResult>> GetWorkEditionsTypedAsync(string workId, CancellationToken cancellationToken)
+    {
+        var work = await KiotaInvoker.InvokeAsync(Id, () => client.Api.V1.Works[workId].GetAsync(cancellationToken: cancellationToken), cancellationToken);
+        return work is null ? [] : mapper.MapEditions(work);
     }
 
     private async Task<ProviderSearchResponse> IdentifierSearchRawAsync(SearchRequest request, CancellationToken cancellationToken)
@@ -161,6 +175,20 @@ public sealed class AudioSiloProvider(ProviderConfig config, ProviderTransport t
         var result = ParseWorkDetail(document.RootElement, recordingId, includeRaw);
         return result ?? throw new ProviderException(Id, "invalid_response", "AudioSilo work response has no title");
     }
+
+    private async Task<IReadOnlyList<SearchResult>> GetWorkEditionsRawAsync(string workId, CancellationToken cancellationToken)
+    {
+        var uri = ProviderTransport.BuildUri(config.BaseUrl, $"api/v1/works/{Uri.EscapeDataString(workId)}", []);
+        var response = await transport.GetAsync(config, uri, cancellationToken);
+        using var document = ParseDocument(response.Content);
+        if (!document.RootElement.TryGetProperty("recordings", out var recordings) || recordings.ValueKind != JsonValueKind.Array)
+            return ParseWorkDetail(document.RootElement, null, true) is { } result ? [result] : [];
+        var ids = recordings.EnumerateArray().Select(item => JsonFields.String(item, "id")).Where(id => id is not null).ToList();
+        return ids.Select(id => ParseWorkDetail(document.RootElement, id, true)).Where(result => result is not null).Select(result => result!).ToList();
+    }
+
+    private static string? WorkId(SearchResult result)
+        => result.ProviderRecordId?.StartsWith("work/", StringComparison.Ordinal) == true ? result.ProviderRecordId[5..] : null;
 
     private SearchResult? ParseWorkCard(JsonElement item, bool includeRaw)
     {

@@ -26,7 +26,7 @@ public sealed class ProviderTransport(IHttpClientFactory clients)
             if (auth is not null)
                 request.Headers.TryAddWithoutValidation("Authorization", auth);
             foreach (var header in provider.Headers)
-                request.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                request.Headers.TryAddWithoutValidation(header.Key, ResolveHeaderValue(header.Value));
 
             HttpResponseMessage response;
             try
@@ -117,6 +117,7 @@ public sealed class ProviderTransport(IHttpClientFactory clients)
     private static bool IsRedirect(HttpStatusCode status) => (int)status is 301 or 302 or 303 or 307 or 308;
     private static bool SameOrigin(Uri left, Uri right) => left.Scheme.Equals(right.Scheme, StringComparison.OrdinalIgnoreCase) && left.Host.Equals(right.Host, StringComparison.OrdinalIgnoreCase) && left.Port == right.Port;
     private static string Redact(Uri uri) => new UriBuilder(uri) { Query = string.Empty }.Uri.ToString();
+    private static string ResolveHeaderValue(string value) => SecretResolver.HasValidSyntax(value) ? SecretResolver.Resolve(value) : value;
 
     private static async Task<bool> CanRetryAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {

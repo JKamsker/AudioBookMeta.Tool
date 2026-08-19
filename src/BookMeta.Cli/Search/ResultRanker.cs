@@ -37,7 +37,7 @@ public sealed class ResultRanker
             ("narrator", request.Narrator, string.Join(' ', result.Narrators), 7),
             ("language", request.Language, result.Language ?? string.Empty, 5)
         };
-        var applicable = fields.Where(field => !string.IsNullOrWhiteSpace(field.Query)).ToList();
+        var applicable = fields.Where(field => !string.IsNullOrWhiteSpace(field.Query) && (field.Name == "title" || !string.IsNullOrWhiteSpace(field.Candidate))).ToList();
         var denominator = applicable.Sum(field => field.Weight);
         var weighted = 0d;
         foreach (var field in applicable)

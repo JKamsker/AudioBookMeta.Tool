@@ -35,6 +35,7 @@ public sealed class SearchRenderer(AppConsole console, ResultClusterer clusterer
 
         if (explain)
         {
+            console.Out.MarkupLine($"[grey]providers: {AppConsole.Safe(string.Join(',', response.ProviderStatus.Select(status => status.Provider)))}[/]");
             foreach (var result in response.Results)
             {
                 console.Out.MarkupLine($"[grey]{AppConsole.Safe(result.Provider)} {AppConsole.Safe(result.Title)}[/]");
@@ -56,7 +57,10 @@ public sealed class SearchRenderer(AppConsole console, ResultClusterer clusterer
 
     private void WriteWarnings(SearchResponse response, bool explain)
     {
-        foreach (var warning in response.Warnings.Where(warning => explain || warning.Contains("timed out", StringComparison.OrdinalIgnoreCase) || warning.Contains("failed", StringComparison.OrdinalIgnoreCase)))
+        var failureWarnings = response.ProviderStatus.Where(status => status.Status is not ("ok" or "empty"))
+            .Select(status => $"{status.Provider}: {status.Message ?? status.Status}");
+        var details = explain ? response.Warnings : [];
+        foreach (var warning in failureWarnings.Concat(details).Distinct(StringComparer.Ordinal))
             console.Warning(warning);
     }
 

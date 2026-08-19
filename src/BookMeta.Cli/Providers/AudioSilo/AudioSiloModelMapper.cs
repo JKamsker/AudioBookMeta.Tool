@@ -37,6 +37,14 @@ internal sealed class AudioSiloModelMapper(string providerId)
         };
     }
 
+    public IReadOnlyList<NormalizedSearchResult> MapEditions(WorkDetail work)
+    {
+        if (work.Recordings is not { Count: > 0 })
+            return MapDetail(work, null) is { } result ? [result] : [];
+        return work.Recordings.Select(recording => MapDetail(work, recording.Id))
+            .Where(result => result is not null).Select(result => result!).ToList();
+    }
+
     private static List<string> Names(IEnumerable<PersonRef>? people)
         => people?.Select(person => person.Name).Where(name => !string.IsNullOrWhiteSpace(name)).Select(name => name!).ToList() ?? [];
 
