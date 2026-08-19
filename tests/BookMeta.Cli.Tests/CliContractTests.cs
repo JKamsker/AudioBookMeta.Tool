@@ -38,6 +38,7 @@ public sealed class CliContractTests
         Assert.Equal(2, result.ExitCode);
         Assert.Empty(result.Stdout);
         Assert.Contains("Supply QUERY", result.Stderr, StringComparison.Ordinal);
+        Assert.DoesNotContain("Diagnostic log saved", result.Stderr, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -51,7 +52,7 @@ public sealed class CliContractTests
     private static async Task<ProcessResult> RunAsync(params string[] arguments)
     {
         var root = RepositoryRoot();
-        var assembly = Path.Combine(root, "src", "BookMeta.Cli", "bin", "Debug", "net10.0", "bookmeta.dll");
+        var assembly = Path.Combine(AppContext.BaseDirectory, "bookmeta.dll");
         var start = new ProcessStartInfo("dotnet")
         {
             RedirectStandardOutput = true,
