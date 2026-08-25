@@ -56,6 +56,9 @@ public sealed class SearchSettings : GlobalSettings
     public bool NoDedupe { get; init; }
     [CommandOption("--editions")]
     public bool Editions { get; init; }
+    [CommandOption("--shop-links")]
+    [Description("Hydrate search cards with shop URLs; slower and may make one detail request per result.")]
+    public bool ShopLinks { get; init; }
     [CommandOption("--raw")]
     public bool Raw { get; init; }
     [CommandOption("--explain")]
@@ -109,6 +112,7 @@ public sealed class SearchCommand(ConfigLoader loader, SearchEngine engine, Sear
             Page = settings.Page,
             LimitPerProvider = settings.LimitPerProvider ?? config.Search.LimitPerProvider,
             Exact = settings.Exact,
+            IncludeShopLinks = settings.ShopLinks,
             Editions = settings.Editions
         };
         var execution = await engine.ExecuteAsync(config, request, new SearchOptions

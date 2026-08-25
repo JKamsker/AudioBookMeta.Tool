@@ -175,7 +175,13 @@ public sealed class AdapterTests
         var provider = new LismioProvider(Config("lismio"), new ProviderTransport(factory));
 
         var response = await provider.SearchAsync(
-            new SearchRequest { Title = "Project Hail Mary", Author = "Andy Weir", Page = 2 },
+            new SearchRequest
+            {
+                Title = "Project Hail Mary",
+                Author = "Andy Weir",
+                Page = 2,
+                IncludeShopLinks = true
+            },
             true,
             TestContext.Current.CancellationToken);
 
@@ -204,7 +210,7 @@ public sealed class AdapterTests
         var provider = new LismioProvider(Config("lismio"), new ProviderTransport(factory));
 
         var response = await provider.SearchAsync(
-            new SearchRequest { Query = "Project Hail Mary" },
+            new SearchRequest { Query = "Project Hail Mary", IncludeShopLinks = true },
             false,
             TestContext.Current.CancellationToken);
 
@@ -213,6 +219,33 @@ public sealed class AdapterTests
         Assert.Empty(book.ShopLinks);
         Assert.Single(response.Warnings);
         Assert.Single(book.Warnings);
+    }
+
+    [Fact]
+    public async Task Lismio_search_returns_cards_without_detail_hydration_by_default()
+    {
+        var requests = 0;
+        var factory = new TestHttpFactory((request, _) =>
+        {
+            requests++;
+            Assert.EndsWith("/search", request.RequestUri!.AbsolutePath, StringComparison.Ordinal);
+            return Task.FromResult(TestHttpFactory.Html(LismioSearchHtml));
+        });
+        var provider = new LismioProvider(Config("lismio"), new ProviderTransport(factory));
+
+        var response = await provider.SearchAsync(
+            new SearchRequest { Query = "Project Hail Mary" },
+            true,
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, requests);
+        Assert.Equal(1, response.RequestCount);
+        var book = Assert.Single(response.Candidates);
+        Assert.Equal("Project Hail Mary", book.Title);
+        Assert.Equal("Andy Weir", Assert.Single(book.Authors));
+        Assert.Null(book.DurationSeconds);
+        Assert.Empty(book.ShopLinks);
+        Assert.Contains("Project Hail Mary", book.Raw!.Value.GetProperty("card_html").GetString(), StringComparison.Ordinal);
     }
 
     [Fact]

@@ -120,10 +120,12 @@ Libex and AudioSilo publish OpenAPI descriptions. Their normal search, lookup, d
 ### Lismio
 
 Lismio exposes public HTML catalogue pages rather than an OpenAPI contract. The adapter uses bounded
-HTML transport and AngleSharp parsers derived from the companion `lismio-api` implementation. Search
-cards are hydrated through at most four concurrent detail requests so normalized search results include
-shop URLs and the complete audiobook metadata surface. A failed detail request retains the lightweight
-card as a candidate and adds a warning; malformed direct-detail responses fail as provider errors.
+HTML transport and AngleSharp parsers derived from the companion `lismio-api` implementation. Default
+search maps catalogue cards with one request. `--shop-links` opts into at most four concurrent detail
+requests so results include shop URLs and complete audiobook metadata. A failed detail request retains
+the lightweight card as a candidate and adds a warning; malformed direct-detail responses fail as
+provider errors. The hydration flag is part of the cache key, so card-only and enriched results cannot
+collide.
 
 ## Regenerate Kiota clients
 

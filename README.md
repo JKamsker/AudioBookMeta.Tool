@@ -42,9 +42,6 @@ Create that file with three public metadata providers:
 version = 1
 default_group = "default"
 
-[search]
-deadline = "20s"
-
 [providers.libex]
 type = "libex"
 base_url = "https://libexdb.com"
@@ -61,11 +58,11 @@ type = "lismio"
 base_url = "https://lismio.app"
 enabled = true
 region = "de"
-timeout = "15s"
 
 [groups]
-default = ["libex", "audiosilo", "lismio"]
-audiobook = ["libex", "audiosilo", "lismio"]
+default = ["libex", "audiosilo"]
+audiobook = ["libex", "audiosilo"]
+shop-links = ["lismio"]
 ```
 
 Check the file, then try a search:
@@ -110,6 +107,7 @@ Useful search options include:
 | `--fresh` | Ignore cached results |
 | `--exact` | Disable fuzzy matching |
 | `--editions` | Show individual editions and recordings |
+| `--shop-links` | Hydrate search cards with shop URLs; potentially much slower |
 | `--no-dedupe` | Show every provider result separately |
 | `--explain` | Show scoring evidence and provider warnings |
 | `--strict` | Return a failure if any selected provider fails |
@@ -131,6 +129,7 @@ Search only selected providers:
 ```sh
 dotnet audiobookmeta search "Dune" -p libex -p audiosilo -p lismio
 dotnet audiobookmeta search "Dune" --group audiobook
+dotnet audiobookmeta search "Dune" --group shop-links --shop-links --limit-per-provider 3
 dotnet audiobookmeta search "Dune" --provider libex --page 2
 ```
 
@@ -162,10 +161,15 @@ dotnet audiobookmeta get lismio:38299
 
 Libex ASINs are normalized to uppercase and must contain exactly ten letters or digits. Human output includes authors, narrators, series, duration, release details, rating, availability, regions, links, and a cleaned description when Libex supplies them.
 
-Lismio searches hydrate each result with its detail page. That adds contributor roles, editions, EAN,
-collections, and direct shop links for services such as Audible, BookBeat, Deezer, Spotify, Storytel,
-and other shops catalogued by Lismio. Human search output lists the available shop names; `get` prints
-the URLs, and `--json` includes them in `shop_links` for both search and direct retrieval.
+An ordinary Lismio search returns only the catalogue cards from one request. Add `--shop-links` when you
+explicitly want each card hydrated with contributor roles, editions, EAN, collections, and direct shop
+links for services such as Audible, BookBeat, Deezer, Spotify, and Storytel. Hydration can make one detail
+request per candidate, so combine it with a small `--limit-per-provider`. `get` retrieves one complete
+record. Human output uses friendly shop names; JSON and JSONL use stable canonical IDs in `shop_links`.
+
+The starting configuration keeps Lismio outside `default`, so regular searches do not contact it. Select
+it with `--provider lismio` or `--group shop-links`. If no `default_group` is configured, the CLI selects
+all enabled providers, including Lismio.
 
 Not every provider supports direct retrieval; generic Audiobookshelf-compatible providers are usually search-only.
 

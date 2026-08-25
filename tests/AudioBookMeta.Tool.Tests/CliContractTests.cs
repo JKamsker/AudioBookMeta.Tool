@@ -81,6 +81,16 @@ public sealed class CliContractTests
         Assert.Contains("--json", result.Stdout, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task Search_help_marks_shop_link_hydration_as_explicit_and_slow()
+    {
+        var result = await RunAsync("search", "--help");
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("--shop-links", result.Stdout, StringComparison.Ordinal);
+        Assert.Contains("slower", result.Stdout, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static async Task<ProcessResult> RunAsync(params string[] arguments)
     {
         var root = RepositoryRoot();

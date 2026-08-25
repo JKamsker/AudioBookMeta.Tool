@@ -40,7 +40,7 @@ default_group = "default"
 limit = 10
 limit_per_provider = 10
 provider_timeout = "4s"
-deadline = "20s"
+deadline = "8s"
 max_concurrency = 8
 cache_ttl = "15m"
 
@@ -65,11 +65,11 @@ base_url = "https://lismio.app"
 enabled = true
 region = "de"
 priority = 90
-groups = ["default", "audiobook", "shop-links"]
+groups = ["shop-links"]
 
 [groups]
-default = ["libex", "audiosilo", "lismio"]
-audiobook = ["libex", "audiosilo", "lismio"]
+default = ["libex", "audiosilo"]
+audiobook = ["libex", "audiosilo"]
 open-data = ["audiosilo"]
 shop-links = ["lismio"]
 ```
@@ -116,10 +116,10 @@ enabled = true
 
 ### Lismio
 
-Lismio supplies public catalogue metadata and direct listening or purchasing links. Search results are
-hydrated from their detail pages so normalized output includes authors, narrators, contributor roles,
-series, publisher, release date, duration, EAN, abridged state, descriptions, collections, versions,
-and shop URLs when Lismio provides them.
+Lismio supplies public catalogue metadata and direct listening or purchasing links. Normal searches use
+one catalogue request and return only fields present on its result cards. `--shop-links` explicitly
+hydrates each result so output can include authors, narrators, contributor roles, series, publisher,
+release date, duration, EAN, abridged state, descriptions, collections, versions, and shop URLs.
 
 ```toml
 [providers.lismio]
@@ -133,13 +133,19 @@ timeout = "15s"
 `region` selects the Lismio catalogue locale and defaults to `de`. The CLI recognizes links for Amazon
 Music, Apple Books, Apple Music, Audible, BookBeat, Deezer, Everand, Google Play Books, Kobo, Nextory,
 OverDrive, Spotify, Storytel, Thalia, and YouTube Music. Unrecognized external shop URLs are retained as
-`unknown`. Lismio search makes one detail request per candidate, so give the provider a longer timeout
-and ensure `search.deadline` is at least as long when `limit_per_provider` is high.
+`unknown`. Shop-link hydration can make one detail request per candidate, with at most four running at
+once. Keep `--limit-per-provider` small and increase both `--timeout` and `--deadline` when needed.
 
 ```sh
-dotnet audiobookmeta search "Project Hail Mary" --provider lismio --json
+dotnet audiobookmeta search "Project Hail Mary" --provider lismio
+dotnet audiobookmeta search "Project Hail Mary" --provider lismio --shop-links \
+  --limit-per-provider 3 --timeout 15s --deadline 20s --json
 dotnet audiobookmeta get lismio:38299
 ```
+
+Provider selection remains configuration-driven. A default group that omits Lismio keeps it out of
+ordinary searches, as in the starting configuration above. Explicit `--provider lismio` or
+`--group shop-links` selects it. With no `default_group`, every enabled provider is selected.
 
 ### Audiobookshelf-compatible providers
 

@@ -17,6 +17,7 @@ public sealed record SearchRequest
     public int? Page { get; init; }
     public int LimitPerProvider { get; init; } = 10;
     public bool Exact { get; init; }
+    public bool IncludeShopLinks { get; init; }
 
     [JsonIgnore]
     public bool Editions { get; init; }

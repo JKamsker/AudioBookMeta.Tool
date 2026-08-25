@@ -5,7 +5,8 @@ internal sealed record LismioSummary(
     string Title,
     string? Creator,
     Uri Url,
-    Uri? CoverUrl);
+    Uri? CoverUrl,
+    string RawHtml);
 
 internal sealed record LismioPage(
     IReadOnlyList<LismioSummary> Items,

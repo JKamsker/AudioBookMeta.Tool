@@ -30,7 +30,8 @@ internal static partial class LismioPageParser
                 title,
                 NullIfEmpty(Clean(card.QuerySelector(".line-clamp-1")?.TextContent)),
                 url,
-                Absolute(card.QuerySelector("img")?.GetAttribute("src"), pageUrl)));
+                Absolute(card.QuerySelector("img")?.GetAttribute("src"), pageUrl),
+                card.OuterHtml));
             if (items.Count >= limit) break;
         }
 

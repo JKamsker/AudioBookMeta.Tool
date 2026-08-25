@@ -50,19 +50,24 @@ internal sealed class LismioModelMapper(string providerId)
         Raw = raw
     };
 
-    internal SearchResult MapSummary(LismioSummary summary, string locale, string warning) => new()
-    {
-        Provider = providerId,
-        ProviderType = "lismio",
-        ProviderRecordId = summary.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
-        Title = summary.Title,
-        Authors = summary.Creator is null ? [] : [summary.Creator],
-        Regions = [locale],
-        Format = "audiobook",
-        CoverUrl = summary.CoverUrl?.AbsoluteUri,
-        SourceUrl = summary.Url.AbsoluteUri,
-        Warnings = [warning]
-    };
+    internal SearchResult MapSummary(
+        LismioSummary summary,
+        string locale,
+        bool includeRaw,
+        string? warning = null) => new()
+        {
+            Provider = providerId,
+            ProviderType = "lismio",
+            ProviderRecordId = summary.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            Title = summary.Title,
+            Authors = summary.Creator is null ? [] : [summary.Creator],
+            Regions = [locale],
+            Format = "audiobook",
+            CoverUrl = summary.CoverUrl?.AbsoluteUri,
+            SourceUrl = summary.Url.AbsoluteUri,
+            Warnings = warning is null ? [] : [warning],
+            Raw = includeRaw ? JsonSerializer.SerializeToElement(new { card_html = summary.RawHtml }) : null
+        };
 
     private static List<string> Prefer(IReadOnlyList<string> primary, IReadOnlyList<string> fallback) =>
         (primary.Count > 0 ? primary : fallback).Distinct(StringComparer.OrdinalIgnoreCase).ToList();

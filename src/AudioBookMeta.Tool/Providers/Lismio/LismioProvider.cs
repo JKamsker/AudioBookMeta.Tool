@@ -29,6 +29,15 @@ public sealed class LismioProvider(ProviderConfig config, ProviderTransport tran
         var response = await transport.GetHtmlAsync(config, uri, cancellationToken);
         var html = Encoding.UTF8.GetString(response.Content);
         var summaries = LismioPageParser.ParsePage(html, response.Uri, page, request.LimitPerProvider);
+        if (!request.IncludeShopLinks)
+        {
+            return new ProviderSearchResponse
+            {
+                Candidates = summaries.Items.Select(summary =>
+                    mapper.MapSummary(summary, locale, includeRaw)).ToList(),
+                RequestCount = 1
+            };
+        }
         var warnings = new string?[summaries.Items.Count];
         var results = new SearchResult[summaries.Items.Count];
         using var gate = new SemaphoreSlim(DetailConcurrency);
@@ -110,7 +119,7 @@ public sealed class LismioProvider(ProviderConfig config, ProviderTransport tran
         {
             var message = $"detail hydration failed for Lismio audiobook {summary.Id}: {exception.Message}";
             warnings[index] = message;
-            results[index] = mapper.MapSummary(summary, locale, message);
+            results[index] = mapper.MapSummary(summary, locale, includeRaw, message);
         }
         finally
         {
