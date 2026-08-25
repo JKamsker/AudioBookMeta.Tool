@@ -13,6 +13,16 @@ public sealed class ProviderTransport(IHttpClientFactory clients)
     private const int MaxResponseBytes = 10 * 1024 * 1024;
 
     public async Task<TransportResponse> GetAsync(ProviderConfig provider, Uri uri, CancellationToken cancellationToken)
+        => await GetAsync(provider, uri, "application/json", cancellationToken);
+
+    public async Task<TransportResponse> GetHtmlAsync(ProviderConfig provider, Uri uri, CancellationToken cancellationToken)
+        => await GetAsync(provider, uri, "text/html", cancellationToken);
+
+    private async Task<TransportResponse> GetAsync(
+        ProviderConfig provider,
+        Uri uri,
+        string acceptedMediaType,
+        CancellationToken cancellationToken)
     {
         var auth = provider.Auth is null ? null : SecretResolver.Resolve(provider.Auth);
         var current = uri;
@@ -23,7 +33,7 @@ public sealed class ProviderTransport(IHttpClientFactory clients)
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, current);
             request.Headers.UserAgent.ParseAdd(ApplicationIdentity.UserAgent);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(acceptedMediaType));
             if (auth is not null)
                 request.Headers.TryAddWithoutValidation("Authorization", auth);
             foreach (var header in provider.Headers)

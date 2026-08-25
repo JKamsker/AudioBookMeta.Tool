@@ -30,7 +30,8 @@ Replace `linux-x64` with your [.NET runtime identifier](https://learn.microsoft.
 
 ## Quick start
 
-Run any provider or search command. On first use, `dotnet audiobookmeta` creates a default configuration with the public Libex and AudioSilo providers:
+Run any provider or search command. On first use, `dotnet audiobookmeta` creates a configuration with
+the public Libex, AudioSilo, and Lismio providers. Only Libex belongs to the default search group:
 
 ```sh
 dotnet audiobookmeta providers list
@@ -53,6 +54,14 @@ dotnet audiobookmeta config set providers.catalog.type abs
 dotnet audiobookmeta config set providers.catalog.base_url https://metadata.example/catalog
 dotnet audiobookmeta config set providers.catalog.groups default,books
 dotnet audiobookmeta config validate
+```
+
+Lismio is available without being contacted by ordinary searches. Request it explicitly, or add it to
+the default group if you want every search to use it:
+
+```sh
+dotnet audiobookmeta search "Dune" --provider lismio
+dotnet audiobookmeta config set groups.default libex,lismio
 ```
 
 Use secret references such as `env:NAME` or `file:/path` for credentials; do not put secret values directly on a command line where shell history may retain them.
@@ -91,6 +100,7 @@ Useful search options include:
 | `--fresh` | Ignore cached results |
 | `--exact` | Disable fuzzy matching |
 | `--editions` | Show individual editions and recordings |
+| `--shop-links` | Hydrate search cards with shop URLs; potentially much slower |
 | `--no-dedupe` | Show every provider result separately |
 | `--explain` | Show scoring evidence and provider warnings |
 | `--strict` | Return a failure if any selected provider fails |
@@ -110,12 +120,13 @@ dotnet audiobookmeta providers capabilities audiosilo
 Search only selected providers:
 
 ```sh
-dotnet audiobookmeta search "Dune" -p libex -p audiosilo
+dotnet audiobookmeta search "Dune" -p libex -p audiosilo -p lismio
 dotnet audiobookmeta search "Dune" --group audiobook
+dotnet audiobookmeta search "Dune" --group shop-links --shop-links --limit-per-provider 3
 dotnet audiobookmeta search "Dune" --provider libex --page 2
 ```
 
-`--page` selects a native zero-based provider page from 0 to 9. It refuses providers that cannot honor native pagination, so select only Libex when using it.
+`--page` selects a native zero-based provider page from 0 to 9. It refuses providers that cannot honor native pagination; Libex and Lismio support it.
 
 Provider names and groups come from your configuration file. See the [configuration guide](docs/configuration.md) to add community or self-hosted Audiobookshelf-compatible providers.
 
@@ -138,9 +149,21 @@ When a result has a provider record ID, retrieve it directly with `PROVIDER:ID`:
 dotnet audiobookmeta get libex:B08G9PRS1K
 dotnet audiobookmeta get libex:B08G9PRS1K --region uk
 dotnet audiobookmeta get audiosilo:work/project-hail-mary
+dotnet audiobookmeta get lismio:38299
 ```
 
 Libex ASINs are normalized to uppercase and must contain exactly ten letters or digits. Human output includes authors, narrators, series, duration, release details, rating, availability, regions, links, and a cleaned description when Libex supplies them.
+
+An ordinary Lismio search returns only the catalogue cards from one request. Add `--shop-links` when you
+explicitly want each card hydrated with contributor roles, editions, EAN, collections, and direct shop
+links for services such as Audible, BookBeat, Deezer, Spotify, and Storytel. Hydration can make one detail
+request per candidate, so combine it with a small `--limit-per-provider`. `get` retrieves one complete
+record. Human output uses friendly shop names; JSON and JSONL use stable canonical IDs in `shop_links`.
+
+The generated first-run configuration puts only Libex in `default`; Lismio is registered only in
+`shop-links`, so regular searches do not contact it. Select it with `--provider lismio` or
+`--group shop-links`, or add it to `groups.default`. If no `default_group` is configured, the CLI selects
+all enabled providers, including Lismio.
 
 Not every provider supports direct retrieval; generic Audiobookshelf-compatible providers are usually search-only.
 

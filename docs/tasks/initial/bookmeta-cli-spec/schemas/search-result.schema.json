@@ -48,6 +48,19 @@
         "type": "string"
       }
     },
+    "contributors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "role"],
+        "properties": {
+          "name": { "type": "string" },
+          "role": { "type": "string" },
+          "url": { "type": ["string", "null"] }
+        },
+        "additionalProperties": false
+      }
+    },
     "series": {
       "type": "array",
       "items": {
@@ -182,6 +195,12 @@
         "null"
       ]
     },
+    "abridged": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
     "genres": {
       "type": "array",
       "items": {
@@ -211,6 +230,68 @@
         "string",
         "null"
       ]
+    },
+    "short_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "liner_notes": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "shop_links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["provider", "url"],
+        "properties": {
+          "provider": { "type": "string" },
+          "url": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "versions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": ["string", "null"] },
+          "ean": { "type": ["string", "null"] },
+          "duration_seconds": { "type": ["integer", "null"], "minimum": 0 },
+          "abridged": { "type": ["boolean", "null"] },
+          "shop_links": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["provider", "url"],
+              "properties": {
+                "provider": { "type": "string" },
+                "url": { "type": "string" }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "collections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "url"],
+        "properties": {
+          "name": { "type": "string" },
+          "id": { "type": ["string", "null"] },
+          "url": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
     },
     "score": {
       "type": "number",

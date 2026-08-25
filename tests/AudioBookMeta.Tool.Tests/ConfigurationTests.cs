@@ -6,6 +6,20 @@ namespace AudiobookMeta.Tool.Tests;
 public sealed class ConfigurationTests
 {
     [Fact]
+    public void Generated_config_selects_only_Libex_by_default_and_allows_explicit_Lismio()
+    {
+        var path = TemporaryConfig(DefaultConfigFile.Content);
+        var config = new ConfigLoader(new ConfigPathResolver()).Load(path);
+        var selector = new ProviderSelector();
+
+        var selectedByDefault = selector.Select(config, [], [], []);
+        var selectedExplicitly = selector.Select(config, ["lismio"], [], []);
+
+        Assert.Collection(selectedByDefault, provider => Assert.Equal("libex", provider.Id));
+        Assert.Collection(selectedExplicitly, provider => Assert.Equal("lismio", provider.Id));
+    }
+
+    [Fact]
     public void Loader_merges_provider_group_memberships_and_selector_excludes()
     {
         var path = TemporaryConfig("""
@@ -70,6 +84,41 @@ public sealed class ConfigurationTests
             type = "abs"
             base_url = "http://one.example"
             """);
+        Assert.Throws<AudiobookMetaException>(() => new ConfigLoader(new ConfigPathResolver()).Load(path));
+    }
+
+    [Fact]
+    public void Lismio_is_a_supported_provider_type()
+    {
+        var path = TemporaryConfig("""
+            version = 1
+            [providers.lismio]
+            type = "lismio"
+            base_url = "https://lismio.app"
+            region = "de-DE"
+            """);
+
+        var config = new ConfigLoader(new ConfigPathResolver()).Load(path);
+
+        Assert.Equal("lismio", config.Providers["lismio"].Type);
+    }
+
+    [Theory]
+    [InlineData("-")]
+    [InlineData("-de")]
+    [InlineData("de-")]
+    [InlineData("de--AT")]
+    [InlineData("../../internal")]
+    public void Invalid_Lismio_locale_is_rejected_during_configuration_load(string locale)
+    {
+        var path = TemporaryConfig($$"""
+            version = 1
+            [providers.lismio]
+            type = "lismio"
+            base_url = "https://lismio.app"
+            region = "{{locale}}"
+            """);
+
         Assert.Throws<AudiobookMetaException>(() => new ConfigLoader(new ConfigPathResolver()).Load(path));
     }
 

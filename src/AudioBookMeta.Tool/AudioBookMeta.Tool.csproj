@@ -16,6 +16,7 @@
     <RepositoryUrl>https://github.com/JKamsker/AudioBookMeta.Tool</RepositoryUrl>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="AngleSharp" Version="1.7.2" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
     <PackageReference Include="Microsoft.Kiota.Bundle" Version="2.0.0" />

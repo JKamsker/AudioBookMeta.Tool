@@ -7,6 +7,7 @@ public static class ProviderNotes
         "abs" => "Generic Audiobookshelf search-only provider; optional fields and fuzzy behavior vary by deployment.",
         "libex" => "Native Libex adapter with quick search, structured search, ASIN lookup, and health checks.",
         "audiosilo" => "Native AudioSilo Meta adapter with prefix search, identifier lookup, and work/recording identity.",
+        "lismio" => "Native Lismio catalogue adapter with one-request card search and opt-in detail/shop-link hydration.",
         _ => "No source notes available."
     };
 }

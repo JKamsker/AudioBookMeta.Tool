@@ -50,6 +50,7 @@ public sealed class AudiobookRenderer(AppConsole console)
         Add(table, "Provider ID", book.ProviderRecordId);
         Add(table, "Authors", string.Join(", ", book.Authors));
         Add(table, "Narrators", string.Join(", ", book.Narrators));
+        Add(table, "Contributors", string.Join(", ", book.Contributors.Select(person => $"{person.Name} ({person.Role})")));
         Add(table, "Series", string.Join(", ", book.Series.Select(FormatSeries)));
         Add(table, "Duration", FormatDuration(book.DurationSeconds));
         Add(table, "Released", book.ReleaseDate);
@@ -63,9 +64,16 @@ public sealed class AudiobookRenderer(AppConsole console)
         Add(table, "Buyable", FormatBoolean(book.IsBuyable));
         Add(table, "Listenable", FormatBoolean(book.IsListenable));
         Add(table, "Virtual voice", FormatBoolean(book.IsVirtualVoice));
+        Add(table, "Abridged", FormatBoolean(book.Abridged));
+        Add(table, "EAN", book.Identifiers.Other.TryGetValue("ean", out var ean) ? Convert.ToString(ean) : null);
+        Add(table, "Collections", string.Join(", ", book.Collections.Select(collection => collection.Name)));
         Add(table, "Source", book.SourceUrl);
+        Add(table, "Short link", book.ShortUrl);
+        foreach (var link in book.ShopLinks)
+            Add(table, $"Shop: {ShopLinkDisplay.Name(link.Provider)}", link.Url);
         Add(table, "Cover", book.CoverUrl);
         Add(table, "Description", CleanDescription(book.Description));
+        Add(table, "Liner notes", CleanDescription(book.LinerNotes));
 
         console.Out.Write(table);
     }

@@ -17,6 +17,7 @@ public sealed record SearchRequest
     public int? Page { get; init; }
     public int LimitPerProvider { get; init; } = 10;
     public bool Exact { get; init; }
+    public bool IncludeShopLinks { get; init; }
 
     [JsonIgnore]
     public bool Editions { get; init; }
@@ -27,6 +28,21 @@ public sealed record SearchRequest
 }
 
 public sealed record SeriesEntry(string Name, string? Sequence = null);
+
+public sealed record ContributorEntry(string Name, string Role, string? Url = null);
+
+public sealed record ShopLinkEntry(string Provider, string Url);
+
+public sealed record CollectionEntry(string Name, string? Id, string Url);
+
+public sealed record AudiobookVersionEntry
+{
+    public string? Id { get; init; }
+    public string? Ean { get; init; }
+    public long? DurationSeconds { get; init; }
+    public bool? Abridged { get; init; }
+    public List<ShopLinkEntry> ShopLinks { get; init; } = [];
+}
 
 public sealed record Identifiers
 {
@@ -45,6 +61,7 @@ public sealed record SearchResult
     public string? Subtitle { get; init; }
     public List<string> Authors { get; init; } = [];
     public List<string> Narrators { get; init; } = [];
+    public List<ContributorEntry> Contributors { get; init; } = [];
     public List<SeriesEntry> Series { get; init; } = [];
     public Identifiers Identifiers { get; init; } = new();
     public string? Publisher { get; init; }
@@ -59,11 +76,17 @@ public sealed record SearchResult
     public bool? IsBuyable { get; init; }
     public bool? IsListenable { get; init; }
     public bool? IsVirtualVoice { get; init; }
+    public bool? Abridged { get; init; }
     public List<string> Genres { get; init; } = [];
     public List<string> Tags { get; init; } = [];
     public string? CoverUrl { get; init; }
     public string? Description { get; init; }
     public string? SourceUrl { get; init; }
+    public string? ShortUrl { get; init; }
+    public string? LinerNotes { get; init; }
+    public List<ShopLinkEntry> ShopLinks { get; init; } = [];
+    public List<AudiobookVersionEntry> Versions { get; init; } = [];
+    public List<CollectionEntry> Collections { get; init; } = [];
     public double Score { get; set; }
     public string? Confidence { get; set; }
     public string? WorkClusterId { get; set; }

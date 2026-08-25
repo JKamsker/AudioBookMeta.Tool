@@ -5,6 +5,7 @@ using AudiobookMeta.Tool.Providers;
 using AudiobookMeta.Tool.Providers.Abs;
 using AudiobookMeta.Tool.Providers.AudioSilo;
 using AudiobookMeta.Tool.Providers.Libex;
+using AudiobookMeta.Tool.Providers.Lismio;
 
 namespace AudiobookMeta.Tool.Tests;
 
@@ -156,6 +157,114 @@ public sealed class AdapterTests
     }
 
     [Fact]
+    public async Task Lismio_search_hydrates_complete_metadata_and_shop_links()
+    {
+        var requests = 0;
+        var factory = new TestHttpFactory((request, _) =>
+        {
+            requests++;
+            if (request.RequestUri!.AbsolutePath.EndsWith("/search", StringComparison.Ordinal))
+            {
+                Assert.Contains("keywords=Project%20Hail%20Mary%20Andy%20Weir", request.RequestUri.Query, StringComparison.Ordinal);
+                Assert.Contains("page=3", request.RequestUri.Query, StringComparison.Ordinal);
+                return Task.FromResult(TestHttpFactory.Html(LismioSearchHtml));
+            }
+            Assert.Equal("/de/audiobook/42", request.RequestUri.AbsolutePath);
+            return Task.FromResult(TestHttpFactory.Html(LismioDetailHtml));
+        });
+        var provider = new LismioProvider(Config("lismio"), new ProviderTransport(factory));
+
+        var response = await provider.SearchAsync(
+            new SearchRequest
+            {
+                Title = "Project Hail Mary",
+                Author = "Andy Weir",
+                Page = 2,
+                IncludeShopLinks = true
+            },
+            true,
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, requests);
+        Assert.Equal(2, response.RequestCount);
+        var book = Assert.Single(response.Candidates);
+        Assert.Equal("Andy Weir", Assert.Single(book.Authors));
+        Assert.Equal("Ray Porter", Assert.Single(book.Narrators));
+        Assert.Equal(5220, book.DurationSeconds);
+        Assert.False(book.Abridged);
+        Assert.Equal("1234567890123", book.Identifiers.Other["ean"]);
+        Assert.Contains(book.ShopLinks, link => link.Provider == "deezer" && link.Url == "https://deezer.com/album/7");
+        Assert.Contains(book.ShopLinks, link => link.Provider == "audible" && link.Url.Contains("audible.de", StringComparison.Ordinal));
+        Assert.Contains(book.ShopLinks, link => link.Provider == "bookbeat" && link.Url.Contains("bookbeat.de", StringComparison.Ordinal));
+        Assert.Equal("A collection", Assert.Single(book.Collections).Name);
+        Assert.Contains("Project Hail Mary", book.Raw!.Value.GetProperty("detail_html").GetString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Lismio_detail_failure_keeps_search_card_and_reports_warning()
+    {
+        var factory = new TestHttpFactory((request, _) => Task.FromResult(
+            request.RequestUri!.AbsolutePath.EndsWith("/search", StringComparison.Ordinal)
+                ? TestHttpFactory.Html(LismioSearchHtml)
+                : TestHttpFactory.Html("<html>changed</html>")));
+        var provider = new LismioProvider(Config("lismio"), new ProviderTransport(factory));
+
+        var response = await provider.SearchAsync(
+            new SearchRequest { Query = "Project Hail Mary", IncludeShopLinks = true },
+            false,
+            TestContext.Current.CancellationToken);
+
+        var book = Assert.Single(response.Candidates);
+        Assert.Equal("Project Hail Mary", book.Title);
+        Assert.Empty(book.ShopLinks);
+        Assert.Single(response.Warnings);
+        Assert.Single(book.Warnings);
+    }
+
+    [Fact]
+    public async Task Lismio_search_returns_cards_without_detail_hydration_by_default()
+    {
+        var requests = 0;
+        var factory = new TestHttpFactory((request, _) =>
+        {
+            requests++;
+            Assert.EndsWith("/search", request.RequestUri!.AbsolutePath, StringComparison.Ordinal);
+            return Task.FromResult(TestHttpFactory.Html(LismioSearchHtml));
+        });
+        var provider = new LismioProvider(Config("lismio"), new ProviderTransport(factory));
+
+        var response = await provider.SearchAsync(
+            new SearchRequest { Query = "Project Hail Mary" },
+            true,
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, requests);
+        Assert.Equal(1, response.RequestCount);
+        var book = Assert.Single(response.Candidates);
+        Assert.Equal("Project Hail Mary", book.Title);
+        Assert.Equal("Andy Weir", Assert.Single(book.Authors));
+        Assert.Null(book.DurationSeconds);
+        Assert.Empty(book.ShopLinks);
+        Assert.Contains("Project Hail Mary", book.Raw!.Value.GetProperty("card_html").GetString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Lismio_localized_empty_page_is_a_successful_empty_search()
+    {
+        var factory = new TestHttpFactory((_, _) => Task.FromResult(TestHttpFactory.Html(
+            "<main><div class=\"ab-grid\"></div><p>Sin resultados</p></main>")));
+        var provider = new LismioProvider(Config("lismio"), new ProviderTransport(factory));
+
+        var response = await provider.SearchAsync(
+            new SearchRequest { Query = "missing" },
+            false,
+            TestContext.Current.CancellationToken);
+
+        Assert.Empty(response.Candidates);
+        Assert.Equal(1, response.RequestCount);
+    }
+
+    [Fact]
     public async Task Authenticated_cross_host_redirect_is_refused()
     {
         var factory = new TestHttpFactory((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.Redirect)
@@ -224,4 +333,33 @@ public sealed class AdapterTests
         BaseUrl = new Uri("https://provider.example"),
         Enabled = true
     };
+
+    private const string LismioSearchHtml = """
+        <div class="ab-grid"><div class="appear-in" data-template="tpl-42">
+          <a href="https://provider.example/de/audiobook/42/project-hail-mary" aria-label="Audiobook Project Hail Mary">
+            <img src="https://images.test/cover.webp"></a>
+          <div class="line-clamp-2">Project Hail Mary</div><div class="line-clamp-1">Andy Weir</div>
+        </div></div>
+        <nav aria-label="Pagination Navigation"><p><span class="font-medium">1</span></p></nav>
+        """;
+
+    private const string LismioDetailHtml = """
+        <meta name="description" content="A lone astronaut must save humanity.">
+        <meta name="image" content="https://images.test/cover.webp">
+        <script type="application/ld+json">{"@type":"Audiobook","name":"Project Hail Mary",
+          "url":"https://provider.example/de/audiobook/42/project-hail-mary","abridged":false,
+          "author":{"name":"Andy Weir"},"offers":[{"url":"https://deezer.com/album/7"}]}</script>
+        <h1>Project Hail Mary</h1><a data-testid="audiobook-series-link">Hail Mary</a>
+        <div wire:key="version-1">Ungekürzt • 1234567890123 • 1 Stunde 27 Minuten
+          <a href="https://www.awin1.com/cread.php?ued=https://www.audible.de/pd/B012345678">Audible</a>
+          <a href="https://www.awin1.com/cread.php?ued=https://www.bookbeat.de/buch/42">BookBeat</a></div>
+        <a href="https://provider.example/de/artist/1" aria-label="View artist Andy Weir"><div class="line-clamp-1">Autor:in</div></a>
+        <a href="https://provider.example/de/artist/2" aria-label="View artist Ray Porter"><div class="line-clamp-1">Sprecher:in</div></a>
+        <a href="https://provider.example/de/collection/8"><div class="line-clamp-2">A collection</div></a>
+        <section id="tags"><a href="https://provider.example/de/label/2/acme">Acme Audio</a>
+          <div data-testid="audiobook-release-date">Veröffentlichungsdatum 13.09.21</div>
+          <div data-testid="audiobook-shortlink"><a href="https://lismio.link/abc">short</a></div>
+        </section>
+        <div data-testid="audiobook-liner-notes">Full publisher description</div>
+        """;
 }

@@ -17,18 +17,33 @@ public sealed class SearchRenderer(AppConsole console, ResultClusterer clusterer
             return;
         }
 
-        var table = new Table().Border(TableBorder.Simple).AddColumn("#").AddColumn("Score").AddColumn("Title").AddColumn("Author").AddColumn("Narrator").AddColumn("Sources");
+        var table = new Table().Border(TableBorder.Simple).AddColumn("#").AddColumn("Score").AddColumn("Title").AddColumn("Author").AddColumn("Narrator").AddColumn("Shops").AddColumn("Sources");
         var rows = editions || noDedupe
-            ? response.Results.Select(result => (Result: result, Sources: result.Provider, Narrator: string.Join(", ", result.Narrators)))
+            ? response.Results.Select(result => (
+                Result: result,
+                Sources: result.Provider,
+                Narrator: string.Join(", ", result.Narrators),
+                Shops: ShopNames([result])))
             : clusterer.WorkGroups(response.Results).Select(group =>
             {
                 var best = group[0];
                 var narrators = group.SelectMany(result => result.Narrators).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-                return (Result: best, Sources: string.Join(',', group.Select(result => result.Provider).Distinct(StringComparer.OrdinalIgnoreCase)), Narrator: narrators.Count switch { 0 => string.Empty, 1 => narrators[0], _ => "multiple" });
+                return (
+                    Result: best,
+                    Sources: string.Join(',', group.Select(result => result.Provider).Distinct(StringComparer.OrdinalIgnoreCase)),
+                    Narrator: narrators.Count switch { 0 => string.Empty, 1 => narrators[0], _ => "multiple" },
+                    Shops: ShopNames(group));
             });
         var index = 1;
         foreach (var row in rows)
-            table.AddRow((index++).ToString(), row.Result.Score.ToString("0.#"), AppConsole.Safe(row.Result.Title), AppConsole.Safe(string.Join(", ", row.Result.Authors)), AppConsole.Safe(row.Narrator), AppConsole.Safe(row.Sources));
+            table.AddRow(
+                (index++).ToString(),
+                row.Result.Score.ToString("0.#"),
+                AppConsole.Safe(row.Result.Title),
+                AppConsole.Safe(string.Join(", ", row.Result.Authors)),
+                AppConsole.Safe(row.Narrator),
+                AppConsole.Safe(row.Shops),
+                AppConsole.Safe(row.Sources));
         console.Out.Write(table);
         if (index == 1)
             console.Out.WriteLine("No matches.");
@@ -66,4 +81,9 @@ public sealed class SearchRenderer(AppConsole console, ResultClusterer clusterer
 
     private IEnumerable<SearchResult> DisplayResults(IEnumerable<SearchResult> results, bool editions)
         => editions ? results : clusterer.WorkGroups(results).Select(group => group[0]);
+
+    private static string ShopNames(IEnumerable<SearchResult> results) => string.Join(", ", results
+        .SelectMany(result => result.ShopLinks)
+        .Select(link => ShopLinkDisplay.Name(link.Provider))
+        .Distinct(StringComparer.OrdinalIgnoreCase));
 }

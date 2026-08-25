@@ -136,6 +136,7 @@ public sealed class SearchEngine(
         request.Page,
         request.LimitPerProvider,
         request.Exact,
+        request.IncludeShopLinks,
         Providers = providers
     };
 

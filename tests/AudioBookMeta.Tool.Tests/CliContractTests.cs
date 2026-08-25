@@ -82,6 +82,16 @@ public sealed class CliContractTests
     }
 
     [Fact]
+    public async Task Search_help_marks_shop_link_hydration_as_explicit_and_slow()
+    {
+        var result = await RunAsync("search", "--help");
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("--shop-links", result.Stdout, StringComparison.Ordinal);
+        Assert.Contains("slower", result.Stdout, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task First_run_creates_platform_default_config_with_public_providers()
     {
         var directory = TemporaryDirectory();
@@ -93,9 +103,13 @@ public sealed class CliContractTests
         Assert.Equal(0, result.ExitCode);
         Assert.Contains("libex", result.Stdout, StringComparison.Ordinal);
         Assert.Contains("audiosilo", result.Stdout, StringComparison.Ordinal);
+        Assert.Contains("lismio", result.Stdout, StringComparison.Ordinal);
         var path = Path.Combine(configHome, "bookmeta", "config.toml");
         Assert.True(File.Exists(path));
-        Assert.Contains("default_group = \"default\"", await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken), StringComparison.Ordinal);
+        var content = await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken);
+        Assert.Contains("default_group = \"default\"", content, StringComparison.Ordinal);
+        Assert.Contains("default = [\"libex\"]", content, StringComparison.Ordinal);
+        Assert.Contains("shop-links = [\"lismio\"]", content, StringComparison.Ordinal);
     }
 
     [Fact]

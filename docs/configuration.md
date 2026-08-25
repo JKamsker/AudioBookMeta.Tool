@@ -1,6 +1,9 @@
 # Configuration and providers
 
-`dotnet audiobookmeta` uses a TOML file that describes metadata providers and search defaults. On first use of the platform-default path, it creates a ready-to-use file with the public Libex and AudioSilo providers. You can edit the file directly or manage supported values through the `config` commands.
+`dotnet audiobookmeta` uses a TOML file that describes metadata providers and search defaults. On first
+use of the platform-default path, it creates a ready-to-use file with the public Libex, AudioSilo, and
+Lismio providers. Only Libex is selected by default. You can edit the file directly or manage supported
+values through the `config` commands.
 
 ## Configuration location
 
@@ -94,15 +97,24 @@ type = "audiosilo"
 base_url = "https://meta.audiosilo.app"
 enabled = true
 priority = 95
-groups = ["default", "audiobook", "open-data"]
+groups = ["audiobook", "open-data"]
+
+[providers.lismio]
+type = "lismio"
+base_url = "https://lismio.app"
+enabled = true
+region = "de"
+priority = 90
+groups = ["shop-links"]
 
 [groups]
-default = ["libex", "audiosilo"]
+default = ["libex"]
 audiobook = ["libex", "audiosilo"]
 open-data = ["audiosilo"]
+shop-links = ["lismio"]
 ```
 
-Provider IDs such as `libex` and `audiosilo` are the names used by `--provider`, `providers show`, and `get`.
+Provider IDs such as `libex`, `audiosilo`, and `lismio` are the names used by `--provider`, `providers show`, and `get`.
 
 ## Search settings
 
@@ -141,6 +153,41 @@ type = "audiosilo"
 base_url = "https://meta.audiosilo.app"
 enabled = true
 ```
+
+### Lismio
+
+Lismio supplies public catalogue metadata and direct listening or purchasing links. Normal searches use
+one catalogue request and return only fields present on its result cards. `--shop-links` explicitly
+hydrates each result so output can include authors, narrators, contributor roles, series, publisher,
+release date, duration, EAN, abridged state, descriptions, collections, versions, and shop URLs.
+
+```toml
+[providers.lismio]
+type = "lismio"
+base_url = "https://lismio.app"
+enabled = true
+region = "de"
+timeout = "15s"
+```
+
+`region` selects the Lismio catalogue locale and defaults to `de`. The CLI recognizes links for Amazon
+Music, Apple Books, Apple Music, Audible, BookBeat, Deezer, Everand, Google Play Books, Kobo, Nextory,
+OverDrive, Spotify, Storytel, Thalia, and YouTube Music. Unrecognized external shop URLs are retained as
+`unknown`. Shop-link hydration can make one detail request per candidate, with at most four running at
+once. Keep `--limit-per-provider` small and increase both `--timeout` and `--deadline` when needed.
+
+```sh
+dotnet audiobookmeta search "Project Hail Mary" --provider lismio
+dotnet audiobookmeta search "Project Hail Mary" --provider lismio --shop-links \
+  --limit-per-provider 3 --timeout 15s --deadline 20s --json
+dotnet audiobookmeta get lismio:38299
+```
+
+Provider selection remains configuration-driven. A default group that omits Lismio keeps it out of
+ordinary searches, as in the starting configuration above. Explicit `--provider lismio` or
+`--group shop-links` selects it. Add it to the default with
+`dotnet audiobookmeta config set groups.default libex,lismio`. With no `default_group`, every enabled
+provider is selected.
 
 ### Audiobookshelf-compatible providers
 
