@@ -65,6 +65,12 @@ The source-length check warns above 300 lines and rejects handwritten C# files a
 
 GitHub Actions repeats the source-length, formatting, Release build, and test checks. It then packs `AudioBookMeta.Tool` as a NuGet tool, installs the package into an isolated tool directory, verifies the `dotnet audiobookmeta` command, and uploads the `.nupkg` as the run's `audiobookmeta-tool-nuget-*` artifact.
 
+## Versioning and NuGet publishing
+
+GitVersion calculates package versions from `GitVersion.yml`. The first `main` release is `0.0.1`; every successfully published `main` commit receives its version as a Git tag, so the next push increments the patch component. Main-branch workflows are serialized to prevent concurrent pushes from selecting the same version. Pull requests build and verify prerelease packages but never publish them.
+
+The `publish` job uses the `production` GitHub environment and NuGet.org trusted publishing for the `Weirdo` account. GitHub exchanges its short-lived OIDC identity for a temporary NuGet API key, so the repository does not require a long-lived NuGet secret. The trusted-publishing policy on NuGet.org must continue to match repository `JKamsker/AudioBookMeta.Tool`, workflow `ci.yml`, and environment `production`.
+
 Publish a framework-dependent build for local inspection with:
 
 ```sh

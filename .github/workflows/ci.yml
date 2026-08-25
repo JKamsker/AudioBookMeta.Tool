@@ -8,6 +8,12 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: >-
+    ${{ github.event_name == 'push' && github.ref == 'refs/heads/main'
+      && 'ci-main-publish' || github.run_id }}
+  cancel-in-progress: false
+
 env:
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
   DOTNET_NOLOGO: true
@@ -18,15 +24,28 @@ jobs:
     name: Build, test, and pack
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    outputs:
+      semver: ${{ steps.gitversion.outputs.semVer }}
 
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
 
       - name: Install .NET SDK
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
+
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@7417b1089e2c7de93510f1901d656ddf60bb024f # v4.7.0
+        with:
+          versionSpec: 6.8.x
+
+      - name: Determine version
+        id: gitversion
+        uses: gittools/actions/gitversion/execute@7417b1089e2c7de93510f1901d656ddf60bb024f # v4.7.0
 
       - name: Restore dependencies
         run: dotnet restore AudioBookMeta.Tool.slnx
@@ -39,7 +58,11 @@ jobs:
         run: dotnet format AudioBookMeta.Tool.slnx --no-restore --verify-no-changes
 
       - name: Build
-        run: dotnet build AudioBookMeta.Tool.slnx --configuration Release --no-restore
+        run: >-
+          dotnet build AudioBookMeta.Tool.slnx
+          --configuration Release
+          --no-restore
+          -p:Version=${{ steps.gitversion.outputs.semVer }}
 
       - name: Test
         run: >-
@@ -57,18 +80,22 @@ jobs:
           --no-build
           --no-restore
           --output artifacts/nuget
+          -p:PackageVersion=${{ steps.gitversion.outputs.semVer }}
 
       - name: Install and verify NuGet tool
         shell: bash
+        env:
+          PACKAGE_VERSION: ${{ steps.gitversion.outputs.semVer }}
         run: |
           dotnet tool install \
             --tool-path artifacts/tool \
             --add-source "$GITHUB_WORKSPACE/artifacts/nuget" \
             --ignore-failed-sources \
             AudioBookMeta.Tool \
-            --version 1.0.0
+            --version "$PACKAGE_VERSION"
           export PATH="$GITHUB_WORKSPACE/artifacts/tool:$PATH"
-          dotnet audiobookmeta --version
+          reported_version="$(dotnet audiobookmeta --version)"
+          test "$reported_version" = "$PACKAGE_VERSION"
           dotnet audiobookmeta search --help
           dotnet audiobookmeta providers show --help
           dotnet audiobookmeta providers show libex \
@@ -82,3 +109,64 @@ jobs:
           path: artifacts/nuget/*.nupkg
           if-no-files-found: error
           retention-days: 14
+
+  publish:
+    name: Publish to NuGet.org
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build-test-pack
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    permissions:
+      actions: read
+      contents: write
+      id-token: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Download NuGet tool
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: audiobookmeta-tool-nuget-${{ github.sha }}
+          path: artifacts/nuget
+
+      - name: Authenticate to NuGet.org
+        id: nuget-login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        with:
+          user: Weirdo
+
+      - name: Publish NuGet tool
+        env:
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+        run: >-
+          dotnet nuget push artifacts/nuget/*.nupkg
+          --api-key "$NUGET_API_KEY"
+          --source https://www.nuget.org/api/v2/package
+          --skip-duplicate
+
+      - name: Tag published version
+        shell: bash
+        env:
+          PACKAGE_VERSION: ${{ needs.build-test-pack.outputs.semver }}
+        run: |
+          existing_commit="$(git rev-list -n 1 "$PACKAGE_VERSION" 2>/dev/null || true)"
+
+          if [[ -n "$existing_commit" && "$existing_commit" != "$GITHUB_SHA" ]]; then
+            echo "Tag $PACKAGE_VERSION already points to $existing_commit." >&2
+            exit 1
+          fi
+
+          if [[ -z "$existing_commit" ]]; then
+            git tag "$PACKAGE_VERSION" "$GITHUB_SHA"
+            git push origin "refs/tags/$PACKAGE_VERSION"
+          fi
