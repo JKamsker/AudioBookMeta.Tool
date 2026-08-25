@@ -10,13 +10,15 @@ public sealed class ConfigLoader(ConfigPathResolver paths)
     public AudiobookMetaConfig Load(string? explicitPath, bool requireFile = true)
     {
         var path = paths.Resolve(explicitPath);
+        if (!File.Exists(path) && paths.UsesPlatformDefault(explicitPath))
+            DefaultConfigFile.Create(path);
         if (!File.Exists(path))
         {
             if (!requireFile)
                 return new AudiobookMetaConfig { SourcePath = path };
             throw new AudiobookMetaException(
                 $"Configuration file was not found: {path}", ExitCodes.Configuration,
-                "Create the file or set BOOKMETA_CONFIG/--config to an existing TOML file.");
+                "Run a config set command to create it, or set BOOKMETA_CONFIG/--config to an existing TOML file.");
         }
 
         TomlTable root;

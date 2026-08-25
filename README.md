@@ -30,40 +30,32 @@ Replace `linux-x64` with your [.NET runtime identifier](https://learn.microsoft.
 
 ## Quick start
 
-First, ask `dotnet audiobookmeta` where it expects its configuration file:
+Run any provider or search command. On first use, `dotnet audiobookmeta` creates a default configuration with the public Libex and AudioSilo providers:
+
+```sh
+dotnet audiobookmeta providers list
+dotnet audiobookmeta search "Project Hail Mary"
+```
+
+Inspect or change settings without editing TOML by hand:
 
 ```sh
 dotnet audiobookmeta config path
+dotnet audiobookmeta config get search.limit
+dotnet audiobookmeta config set search.limit 20
+dotnet audiobookmeta config validate
 ```
 
-Create that file with two public metadata providers:
-
-```toml
-version = 1
-default_group = "default"
-
-[providers.libex]
-type = "libex"
-base_url = "https://libexdb.com"
-enabled = true
-region = "us"
-
-[providers.audiosilo]
-type = "audiosilo"
-base_url = "https://meta.audiosilo.app"
-enabled = true
-
-[groups]
-default = ["libex", "audiosilo"]
-```
-
-Check the file, then try a search:
+Add a custom provider with dot-separated configuration keys:
 
 ```sh
+dotnet audiobookmeta config set providers.catalog.type abs
+dotnet audiobookmeta config set providers.catalog.base_url https://metadata.example/catalog
+dotnet audiobookmeta config set providers.catalog.groups default,books
 dotnet audiobookmeta config validate
-dotnet audiobookmeta providers test --timeout 10s
-dotnet audiobookmeta search "Project Hail Mary"
 ```
+
+Use secret references such as `env:NAME` or `file:/path` for credentials; do not put secret values directly on a command line where shell history may retain them.
 
 ## Search
 

@@ -24,6 +24,7 @@ var services = new ServiceCollection();
 services.AddSingleton(new AppConsole(ansiConsole));
 services.AddSingleton<ConfigPathResolver>();
 services.AddSingleton<ConfigLoader>();
+services.AddSingleton<ConfigDocumentStore>();
 services.AddSingleton<ProviderSelector>();
 services.AddSingleton<ProviderFactory>();
 services.AddSingleton<ProviderTransport>();
@@ -73,8 +74,18 @@ app.Configure(config =>
     });
     config.AddBranch("config", branch =>
     {
-        branch.SetDescription("Locate and validate the TOML configuration.");
+        branch.SetDescription("Locate, inspect, edit, and validate the TOML configuration.");
         branch.AddCommand<ConfigPathCommand>("path").WithDescription("Print the resolved configuration path.");
+        branch.AddCommand<ConfigGetCommand>("get")
+            .WithDescription("Read one configuration value with secrets redacted.")
+            .WithExample("config", "get", "search.limit");
+        branch.AddCommand<ConfigSetCommand>("set")
+            .WithDescription("Set one configuration value, creating the file when needed.")
+            .WithExample("config", "set", "search.limit", "20")
+            .WithExample("config", "set", "providers.catalog.base_url", "https://metadata.example");
+        branch.AddCommand<ConfigUnsetCommand>("unset")
+            .WithDescription("Remove one configuration value or provider.")
+            .WithExample("config", "unset", "providers.catalog", "--dry-run");
         branch.AddCommand<ConfigValidateCommand>("validate").WithDescription("Validate structure, targets, groups, and secret references.");
     });
     config.AddCommand<CompletionCommand>("completion").WithDescription("Generate shell completion setup for bash, zsh, fish, or PowerShell.");
