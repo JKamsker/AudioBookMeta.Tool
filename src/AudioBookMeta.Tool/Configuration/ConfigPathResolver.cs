@@ -2,6 +2,10 @@ namespace AudiobookMeta.Tool.Configuration;
 
 public sealed class ConfigPathResolver
 {
+    public bool UsesPlatformDefault(string? explicitPath)
+        => string.IsNullOrWhiteSpace(explicitPath) &&
+           string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("BOOKMETA_CONFIG"));
+
     public string Resolve(string? explicitPath)
     {
         if (!string.IsNullOrWhiteSpace(explicitPath))

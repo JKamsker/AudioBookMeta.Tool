@@ -21,11 +21,14 @@ dotnet audiobookmeta
 │   └── capabilities [PROVIDER...]
 ├── config
 │   ├── path
+│   ├── get KEY
+│   ├── set KEY VALUE
+│   ├── unset KEY
 │   └── validate
 └── completion SHELL
 ```
 
-Search and direct retrieval stay at the top level. Provider-native author lookup has a domain branch, while provider discovery and configuration diagnostics are grouped into secondary operational branches.
+Search and direct retrieval stay at the top level. Provider-native author lookup has a domain branch, while provider discovery and local configuration management are grouped into secondary operational branches.
 
 A provider ID is the explicit target selector. The normalized full base URL, including a path prefix, is the target and credential identity boundary because ABS-compatible deployments may use path-scoped providers. Credentials are provider-local `env:`, `file:`, or `literal:` references; there is no implicit profile, account, fallback host, or interactive authentication flow.
 

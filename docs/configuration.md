@@ -1,6 +1,6 @@
 # Configuration and providers
 
-`dotnet audiobookmeta` reads a TOML file that describes metadata providers and search defaults. It never modifies this file automatically.
+`dotnet audiobookmeta` uses a TOML file that describes metadata providers and search defaults. On first use of the platform-default path, it creates a ready-to-use file with the public Libex and AudioSilo providers. You can edit the file directly or manage supported values through the `config` commands.
 
 ## Configuration location
 
@@ -22,6 +22,8 @@ The `bookmeta` directory name and `BOOKMETA_CONFIG` environment variable are ret
 
 Use `--config PATH` for one command or set `BOOKMETA_CONFIG` to choose another file.
 
+Normal read and provider commands do not create a missing custom `--config` or `BOOKMETA_CONFIG` path, which helps catch path typos. An explicit `config set ... --config PATH` command does create and seed that file because it is a configuration mutation.
+
 Resolution order is:
 
 1. `--config PATH`
@@ -29,6 +31,41 @@ Resolution order is:
 3. The platform default path
 
 Command flags override matching values loaded from the file. Missing settings use built-in defaults.
+
+## Configure through the CLI
+
+Read and update values with dot-separated keys:
+
+```sh
+dotnet audiobookmeta config get search.limit
+dotnet audiobookmeta config set search.limit 20
+dotnet audiobookmeta config set default_group audiobook
+dotnet audiobookmeta config set groups.audiobook libex,audiosilo
+dotnet audiobookmeta config validate
+```
+
+Provider fields use `providers.ID.FIELD`. Nested headers, query parameters, and capability overrides add one more segment:
+
+```sh
+dotnet audiobookmeta config set providers.catalog.type abs
+dotnet audiobookmeta config set providers.catalog.base_url https://metadata.example/catalog
+dotnet audiobookmeta config set providers.catalog.enabled true
+dotnet audiobookmeta config set providers.catalog.groups default,books
+dotnet audiobookmeta config set providers.catalog.headers.X-Client audiobookmeta
+dotnet audiobookmeta config set providers.catalog.capabilities.isbn_filter true
+dotnet audiobookmeta config validate
+```
+
+Strings are passed without TOML quotes. Provider and group lists use comma-separated values. Integers, booleans, durations, URLs, and capability states are checked before the file is changed. Each write is atomic. A provider can be built across several `config set` calls; run `config validate` after the required fields have been supplied.
+
+Remove a key or a whole provider only with explicit confirmation, or preview the operation first:
+
+```sh
+dotnet audiobookmeta config unset providers.catalog --dry-run
+dotnet audiobookmeta config unset providers.catalog --yes
+```
+
+These commands never prompt or read standard input. Human results go to standard output, errors go to standard error, and `--json` returns the versioned JSON v1 contract. `config get` redacts auth and sensitive header values in both output modes. Prefer `env:NAME` or `file:/path` secret references; command-line values can be retained by shell history and process inspection.
 
 ## A complete starting configuration
 
@@ -252,6 +289,8 @@ Authenticated redirects to another host are refused by default so credentials ca
 
 ```sh
 dotnet audiobookmeta config validate
+dotnet audiobookmeta config get search.deadline
+dotnet audiobookmeta config set search.deadline 12s
 dotnet audiobookmeta providers list
 dotnet audiobookmeta providers show PROVIDER
 dotnet audiobookmeta providers capabilities PROVIDER

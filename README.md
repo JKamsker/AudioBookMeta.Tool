@@ -30,48 +30,42 @@ Replace `linux-x64` with your [.NET runtime identifier](https://learn.microsoft.
 
 ## Quick start
 
-First, ask `dotnet audiobookmeta` where it expects its configuration file:
+Run any provider or search command. On first use, `dotnet audiobookmeta` creates a default configuration with the public Libex and AudioSilo providers:
+
+```sh
+dotnet audiobookmeta providers list
+dotnet audiobookmeta search "Project Hail Mary"
+```
+
+Inspect or change settings without editing TOML by hand:
 
 ```sh
 dotnet audiobookmeta config path
+dotnet audiobookmeta config get search.limit
+dotnet audiobookmeta config set search.limit 20
+dotnet audiobookmeta config validate
 ```
 
-Create that file with three public metadata providers:
-
-```toml
-version = 1
-default_group = "default"
-
-[providers.libex]
-type = "libex"
-base_url = "https://libexdb.com"
-enabled = true
-region = "us"
-
-[providers.audiosilo]
-type = "audiosilo"
-base_url = "https://meta.audiosilo.app"
-enabled = true
-
-[providers.lismio]
-type = "lismio"
-base_url = "https://lismio.app"
-enabled = true
-region = "de"
-
-[groups]
-default = ["libex", "audiosilo"]
-audiobook = ["libex", "audiosilo"]
-shop-links = ["lismio"]
-```
-
-Check the file, then try a search:
+Add a custom provider with dot-separated configuration keys:
 
 ```sh
+dotnet audiobookmeta config set providers.catalog.type abs
+dotnet audiobookmeta config set providers.catalog.base_url https://metadata.example/catalog
+dotnet audiobookmeta config set providers.catalog.groups default,books
 dotnet audiobookmeta config validate
-dotnet audiobookmeta providers test --timeout 10s
-dotnet audiobookmeta search "Project Hail Mary"
 ```
+
+Add Lismio to a separate, opt-in group so ordinary searches do not contact its slower API:
+
+```sh
+dotnet audiobookmeta config set providers.lismio.type lismio
+dotnet audiobookmeta config set providers.lismio.base_url https://lismio.app
+dotnet audiobookmeta config set providers.lismio.region de
+dotnet audiobookmeta config set providers.lismio.groups shop-links
+dotnet audiobookmeta config validate
+```
+
+Use secret references such as `env:NAME` or `file:/path` for credentials; do not put secret values directly on a command line where shell history may retain them.
 
 ## Search
 
@@ -167,9 +161,10 @@ links for services such as Audible, BookBeat, Deezer, Spotify, and Storytel. Hyd
 request per candidate, so combine it with a small `--limit-per-provider`. `get` retrieves one complete
 record. Human output uses friendly shop names; JSON and JSONL use stable canonical IDs in `shop_links`.
 
-The starting configuration keeps Lismio outside `default`, so regular searches do not contact it. Select
-it with `--provider lismio` or `--group shop-links`. If no `default_group` is configured, the CLI selects
-all enabled providers, including Lismio.
+The generated first-run configuration does not include Lismio. The setup commands above add it only to
+`shop-links`, outside `default`, so regular searches do not contact it. Select it with `--provider lismio`
+or `--group shop-links`. If no `default_group` is configured, the CLI selects all enabled providers,
+including Lismio.
 
 Not every provider supports direct retrieval; generic Audiobookshelf-compatible providers are usually search-only.
 

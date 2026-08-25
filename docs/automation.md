@@ -13,6 +13,7 @@ dotnet audiobookmeta search "Dune" --json
 dotnet audiobookmeta providers list --json
 dotnet audiobookmeta get libex:B08G9PRS1K --json
 dotnet audiobookmeta author books "Andy Weir" --provider libex --json
+dotnet audiobookmeta config get search.limit --json
 ```
 
 Top-level JSON documents carry `"schema_version": 1`. Search output conforms to the bundled [search response schema](tasks/initial/bookmeta-cli-spec/schemas/search-response.schema.json), which references the [search result schema](tasks/initial/bookmeta-cli-spec/schemas/search-result.schema.json).
@@ -83,7 +84,7 @@ Use `--verbose` to include the resolved configuration path, time limits, result 
 
 Set `NO_COLOR` or pass `--no-color` to disable ANSI output. Machine output never depends on terminal width, TTY detection, or color support.
 
-All commands are read-only. There are no confirmation prompts, `--yes`, or `--dry-run` modes because `dotnet audiobookmeta` does not create, update, or delete remote or local book data.
+Provider, search, and retrieval commands are read-only and never change remote services or local book data. `config set` performs an explicitly targeted local setting update without prompting. `config unset` requires `--yes`, supports `--dry-run`, and refuses the operation with exit code `2` when neither flag is supplied. No command reads standard input or opens an interactive prompt.
 
 ## Suggested contract checks
 
@@ -93,6 +94,7 @@ These checks cover the stable automation surface:
 dotnet audiobookmeta --help
 dotnet audiobookmeta providers list --no-color
 dotnet audiobookmeta providers list --json | jq -e '.schema_version == 1'
+dotnet audiobookmeta config get search.limit --json | jq -e '.schema_version == 1'
 dotnet audiobookmeta search "Dune" --json | jq -e '.results | type == "array"'
 dotnet audiobookmeta search "Dune" --jsonl | jq -c . >/dev/null
 ```

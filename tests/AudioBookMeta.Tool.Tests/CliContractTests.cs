@@ -91,7 +91,96 @@ public sealed class CliContractTests
         Assert.Contains("slower", result.Stdout, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task First_run_creates_platform_default_config_with_public_providers()
+    {
+        var directory = TemporaryDirectory();
+        var configHome = Path.Combine(directory, "config");
+        var result = await RunWithEnvironmentAsync(
+            new Dictionary<string, string?> { ["XDG_CONFIG_HOME"] = configHome, ["BOOKMETA_CONFIG"] = null },
+            "providers", "list", "--no-color");
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("libex", result.Stdout, StringComparison.Ordinal);
+        Assert.Contains("audiosilo", result.Stdout, StringComparison.Ordinal);
+        var path = Path.Combine(configHome, "bookmeta", "config.toml");
+        Assert.True(File.Exists(path));
+        Assert.Contains("default_group = \"default\"", await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Missing_explicit_config_remains_an_error_for_read_commands()
+    {
+        var path = Path.Combine(TemporaryDirectory(), "missing.toml");
+        var result = await RunAsync("providers", "list", "--config", path);
+
+        Assert.Equal(3, result.ExitCode);
+        Assert.False(File.Exists(path));
+        Assert.Contains("Configuration file was not found", result.Stderr, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Config_commands_create_edit_read_and_validate_a_custom_file()
+    {
+        var path = Path.Combine(TemporaryDirectory(), "nested", "config.toml");
+        var set = await RunAsync("config", "set", "search.limit", "25", "--config", path, "--json");
+        Assert.Equal(0, set.ExitCode);
+        using (var json = JsonDocument.Parse(set.Stdout))
+        {
+            Assert.Equal(1, json.RootElement.GetProperty("schema_version").GetInt32());
+            Assert.Equal(25, json.RootElement.GetProperty("value").GetInt32());
+        }
+
+        var get = await RunAsync("config", "get", "search.limit", "--config", path, "--json");
+        Assert.Equal(0, get.ExitCode);
+        using (var json = JsonDocument.Parse(get.Stdout))
+            Assert.Equal(25, json.RootElement.GetProperty("value").GetInt32());
+
+        var validate = await RunAsync("config", "validate", "--config", path);
+        Assert.Equal(0, validate.ExitCode);
+    }
+
+    [Fact]
+    public async Task Config_unset_requires_confirmation_and_supports_dry_run()
+    {
+        var path = SampleConfig();
+        var refused = await RunAsync("config", "unset", "providers.goodreads", "--config", path);
+        Assert.Equal(2, refused.ExitCode);
+
+        var preview = await RunAsync("config", "unset", "providers.goodreads", "--config", path, "--dry-run", "--json");
+        Assert.Equal(0, preview.ExitCode);
+        using (var json = JsonDocument.Parse(preview.Stdout))
+        {
+            Assert.True(json.RootElement.GetProperty("dry_run").GetBoolean());
+            Assert.False(json.RootElement.GetProperty("removed").GetBoolean());
+        }
+        Assert.Contains("[providers.goodreads]", await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken), StringComparison.Ordinal);
+
+        var confirmed = await RunAsync("config", "unset", "providers.goodreads", "--config", path, "--yes");
+        Assert.Equal(0, confirmed.ExitCode);
+        Assert.DoesNotContain("[providers.goodreads]", await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Config_get_redacts_secret_values()
+    {
+        var path = SampleConfig();
+        var set = await RunAsync("config", "set", "providers.libex.auth", "literal:do-not-print", "--config", path);
+        Assert.Equal(0, set.ExitCode);
+        Assert.DoesNotContain("do-not-print", set.Stdout, StringComparison.Ordinal);
+
+        var get = await RunAsync("config", "get", "providers.libex.auth", "--config", path, "--json");
+        Assert.Equal(0, get.ExitCode);
+        Assert.DoesNotContain("do-not-print", get.Stdout, StringComparison.Ordinal);
+        using var json = JsonDocument.Parse(get.Stdout);
+        Assert.Equal("<redacted>", json.RootElement.GetProperty("value").GetString());
+    }
+
     private static async Task<ProcessResult> RunAsync(params string[] arguments)
+        => await RunWithEnvironmentAsync(new Dictionary<string, string?>(), arguments);
+
+    private static async Task<ProcessResult> RunWithEnvironmentAsync(
+        IReadOnlyDictionary<string, string?> environment, params string[] arguments)
     {
         var root = RepositoryRoot();
         var assembly = Path.Combine(AppContext.BaseDirectory, "dotnet-audiobookmeta.dll");
@@ -102,6 +191,13 @@ public sealed class CliContractTests
             UseShellExecute = false,
             WorkingDirectory = root
         };
+        foreach (var (name, value) in environment)
+        {
+            if (value is null)
+                start.Environment.Remove(name);
+            else
+                start.Environment[name] = value;
+        }
         start.ArgumentList.Add(assembly);
         foreach (var argument in arguments)
             start.ArgumentList.Add(argument);
@@ -120,6 +216,13 @@ public sealed class CliContractTests
         var target = Path.Combine(directory, "config.toml");
         File.Copy(source, target);
         return target;
+    }
+
+    private static string TemporaryDirectory()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"audiobookmeta-tool-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(path);
+        return path;
     }
 
     private static string RepositoryRoot()
