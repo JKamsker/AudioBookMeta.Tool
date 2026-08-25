@@ -1,5 +1,9 @@
 # AudioBookMeta.Tool
 
+[![CI](https://github.com/JKamsker/AudioBookMeta.Tool/actions/workflows/ci.yml/badge.svg)](https://github.com/JKamsker/AudioBookMeta.Tool/actions/workflows/ci.yml)
+[![NuGet](https://img.shields.io/nuget/v/AudioBookMeta.Tool?logo=nuget&label=NuGet)](https://www.nuget.org/packages/AudioBookMeta.Tool)
+[![NuGet downloads](https://img.shields.io/nuget/dt/AudioBookMeta.Tool?logo=nuget&label=downloads)](https://www.nuget.org/packages/AudioBookMeta.Tool)
+
 Search book and audiobook metadata from several providers with one command.
 
 `dotnet audiobookmeta` is useful when you know only part of a title, want to compare results from different sources, or need a stable JSON result for a script. It ranks imperfect matches locally, keeps different audiobook recordings separate, and continues when one provider is temporarily unavailable.
