@@ -6,6 +6,15 @@ Search book and audiobook metadata from several providers with one command.
 
 It is read-only: it does not edit your Audiobookshelf library, media files, or provider data.
 
+## Supported providers
+
+| Provider | Configuration type | Search | Direct retrieval | Notable support |
+| --- | --- | --- | --- | --- |
+| [Libex](docs/configuration.md#libex) | `libex` | Yes | ASIN | Quick search, structured filters, native pagination, and author-book lookup |
+| [AudioSilo Meta](docs/configuration.md#audiosilo) | `audiosilo` | Yes | Work ID, ISBN, or ASIN | Work and recording metadata, identifier lookup, and edition expansion |
+| [Lismio](docs/configuration.md#lismio) | `lismio` | Yes | Catalogue record ID | Native pagination, locale-specific catalogues, and opt-in shop-link hydration |
+| [Audiobookshelf-compatible providers](docs/configuration.md#audiobookshelf-compatible-providers) | `abs` | Yes | No | Generic support for the Audiobookshelf custom metadata-provider search contract; available fields vary by provider |
+
 ## Install
 
 Install the NuGet tool artifact produced by CI with the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0):
