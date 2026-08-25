@@ -55,9 +55,12 @@ dotnet restore
 dotnet build BookMeta.slnx
 dotnet test BookMeta.slnx
 dotnet format BookMeta.slnx --verify-no-changes
+dotnet pack src/BookMeta.Cli -c Release --no-build --no-restore -o artifacts/nuget
 ```
 
 The source-length check warns above 300 lines and rejects handwritten C# files above 500 lines. A hard-limit exception requires a path and non-empty justification in `eng/source-length-exceptions.txt`; generated, build-output, and intermediate files are excluded.
+
+GitHub Actions repeats the source-length, formatting, Release build, and test checks. It then packs `BookMeta.Cli` as a NuGet tool, installs the package into an isolated tool directory, verifies the `bookmeta` command, and uploads the `.nupkg` as the run's `bookmeta-nuget-*` artifact.
 
 Publish a framework-dependent build for local inspection with:
 

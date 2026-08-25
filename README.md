@@ -8,7 +8,16 @@ It is read-only: it does not edit your Audiobookshelf library, media files, or p
 
 ## Install
 
-`bookmeta` currently builds from source and requires the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
+Install the NuGet tool artifact produced by CI with the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0):
+
+```sh
+dotnet tool install --global --add-source PATH_TO_DOWNLOADED_ARTIFACT BookMeta.Cli
+bookmeta search --title "Dune" --author "Frank Herbert"
+```
+
+`PATH_TO_DOWNLOADED_ARTIFACT` is the directory containing `BookMeta.Cli.*.nupkg`. For a published NuGet package, omit `--add-source PATH_TO_DOWNLOADED_ARTIFACT`.
+
+You can also build a self-contained executable from source:
 
 ```sh
 git clone https://github.com/JKamsker/bookmeta-cli.git
