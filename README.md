@@ -30,7 +30,8 @@ Replace `linux-x64` with your [.NET runtime identifier](https://learn.microsoft.
 
 ## Quick start
 
-Run any provider or search command. On first use, `dotnet audiobookmeta` creates a default configuration with the public Libex and AudioSilo providers:
+Run any provider or search command. On first use, `dotnet audiobookmeta` creates a configuration with
+the public Libex, AudioSilo, and Lismio providers. Only Libex belongs to the default search group:
 
 ```sh
 dotnet audiobookmeta providers list
@@ -55,14 +56,12 @@ dotnet audiobookmeta config set providers.catalog.groups default,books
 dotnet audiobookmeta config validate
 ```
 
-Add Lismio to a separate, opt-in group so ordinary searches do not contact its slower API:
+Lismio is available without being contacted by ordinary searches. Request it explicitly, or add it to
+the default group if you want every search to use it:
 
 ```sh
-dotnet audiobookmeta config set providers.lismio.type lismio
-dotnet audiobookmeta config set providers.lismio.base_url https://lismio.app
-dotnet audiobookmeta config set providers.lismio.region de
-dotnet audiobookmeta config set providers.lismio.groups shop-links
-dotnet audiobookmeta config validate
+dotnet audiobookmeta search "Dune" --provider lismio
+dotnet audiobookmeta config set groups.default libex,lismio
 ```
 
 Use secret references such as `env:NAME` or `file:/path` for credentials; do not put secret values directly on a command line where shell history may retain them.
@@ -161,10 +160,10 @@ links for services such as Audible, BookBeat, Deezer, Spotify, and Storytel. Hyd
 request per candidate, so combine it with a small `--limit-per-provider`. `get` retrieves one complete
 record. Human output uses friendly shop names; JSON and JSONL use stable canonical IDs in `shop_links`.
 
-The generated first-run configuration does not include Lismio. The setup commands above add it only to
-`shop-links`, outside `default`, so regular searches do not contact it. Select it with `--provider lismio`
-or `--group shop-links`. If no `default_group` is configured, the CLI selects all enabled providers,
-including Lismio.
+The generated first-run configuration puts only Libex in `default`; Lismio is registered only in
+`shop-links`, so regular searches do not contact it. Select it with `--provider lismio` or
+`--group shop-links`, or add it to `groups.default`. If no `default_group` is configured, the CLI selects
+all enabled providers, including Lismio.
 
 Not every provider supports direct retrieval; generic Audiobookshelf-compatible providers are usually search-only.
 

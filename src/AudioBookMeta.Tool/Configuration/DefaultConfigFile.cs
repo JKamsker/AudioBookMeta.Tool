@@ -29,12 +29,21 @@ public static class DefaultConfigFile
         base_url = "https://meta.audiosilo.app"
         enabled = true
         priority = 95
-        groups = ["default", "audiobook", "open-data"]
+        groups = ["audiobook", "open-data"]
+
+        [providers.lismio]
+        type = "lismio"
+        base_url = "https://lismio.app"
+        enabled = true
+        region = "de"
+        priority = 90
+        groups = ["shop-links"]
 
         [groups]
-        default = ["libex", "audiosilo"]
+        default = ["libex"]
         audiobook = ["libex", "audiosilo"]
         open-data = ["audiosilo"]
+        shop-links = ["lismio"]
         """;
 
     public static bool Create(string path, bool overwrite = false)

@@ -1,6 +1,9 @@
 # Configuration and providers
 
-`dotnet audiobookmeta` uses a TOML file that describes metadata providers and search defaults. On first use of the platform-default path, it creates a ready-to-use file with the public Libex and AudioSilo providers. You can edit the file directly or manage supported values through the `config` commands.
+`dotnet audiobookmeta` uses a TOML file that describes metadata providers and search defaults. On first
+use of the platform-default path, it creates a ready-to-use file with the public Libex, AudioSilo, and
+Lismio providers. Only Libex is selected by default. You can edit the file directly or manage supported
+values through the `config` commands.
 
 ## Configuration location
 
@@ -94,7 +97,7 @@ type = "audiosilo"
 base_url = "https://meta.audiosilo.app"
 enabled = true
 priority = 95
-groups = ["default", "audiobook", "open-data"]
+groups = ["audiobook", "open-data"]
 
 [providers.lismio]
 type = "lismio"
@@ -105,7 +108,7 @@ priority = 90
 groups = ["shop-links"]
 
 [groups]
-default = ["libex", "audiosilo"]
+default = ["libex"]
 audiobook = ["libex", "audiosilo"]
 open-data = ["audiosilo"]
 shop-links = ["lismio"]
@@ -182,7 +185,9 @@ dotnet audiobookmeta get lismio:38299
 
 Provider selection remains configuration-driven. A default group that omits Lismio keeps it out of
 ordinary searches, as in the starting configuration above. Explicit `--provider lismio` or
-`--group shop-links` selects it. With no `default_group`, every enabled provider is selected.
+`--group shop-links` selects it. Add it to the default with
+`dotnet audiobookmeta config set groups.default libex,lismio`. With no `default_group`, every enabled
+provider is selected.
 
 ### Audiobookshelf-compatible providers
 

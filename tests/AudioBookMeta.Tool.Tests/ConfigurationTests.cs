@@ -6,6 +6,20 @@ namespace AudiobookMeta.Tool.Tests;
 public sealed class ConfigurationTests
 {
     [Fact]
+    public void Generated_config_selects_only_Libex_by_default_and_allows_explicit_Lismio()
+    {
+        var path = TemporaryConfig(DefaultConfigFile.Content);
+        var config = new ConfigLoader(new ConfigPathResolver()).Load(path);
+        var selector = new ProviderSelector();
+
+        var selectedByDefault = selector.Select(config, [], [], []);
+        var selectedExplicitly = selector.Select(config, ["lismio"], [], []);
+
+        Assert.Collection(selectedByDefault, provider => Assert.Equal("libex", provider.Id));
+        Assert.Collection(selectedExplicitly, provider => Assert.Equal("lismio", provider.Id));
+    }
+
+    [Fact]
     public void Loader_merges_provider_group_memberships_and_selector_excludes()
     {
         var path = TemporaryConfig("""
