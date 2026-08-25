@@ -36,11 +36,14 @@ First, ask `dotnet audiobookmeta` where it expects its configuration file:
 dotnet audiobookmeta config path
 ```
 
-Create that file with two public metadata providers:
+Create that file with three public metadata providers:
 
 ```toml
 version = 1
 default_group = "default"
+
+[search]
+deadline = "20s"
 
 [providers.libex]
 type = "libex"
@@ -53,8 +56,15 @@ type = "audiosilo"
 base_url = "https://meta.audiosilo.app"
 enabled = true
 
+[providers.lismio]
+type = "lismio"
+base_url = "https://lismio.app"
+enabled = true
+region = "de"
+timeout = "15s"
+
 [groups]
-default = ["libex", "audiosilo"]
+default = ["libex", "audiosilo", "lismio"]
 ```
 
 Check the file, then try a search:
@@ -118,12 +128,12 @@ dotnet audiobookmeta providers capabilities audiosilo
 Search only selected providers:
 
 ```sh
-dotnet audiobookmeta search "Dune" -p libex -p audiosilo
+dotnet audiobookmeta search "Dune" -p libex -p audiosilo -p lismio
 dotnet audiobookmeta search "Dune" --group audiobook
 dotnet audiobookmeta search "Dune" --provider libex --page 2
 ```
 
-`--page` selects a native zero-based provider page from 0 to 9. It refuses providers that cannot honor native pagination, so select only Libex when using it.
+`--page` selects a native zero-based provider page from 0 to 9. It refuses providers that cannot honor native pagination; Libex and Lismio support it.
 
 Provider names and groups come from your configuration file. See the [configuration guide](docs/configuration.md) to add community or self-hosted Audiobookshelf-compatible providers.
 
@@ -146,9 +156,15 @@ When a result has a provider record ID, retrieve it directly with `PROVIDER:ID`:
 dotnet audiobookmeta get libex:B08G9PRS1K
 dotnet audiobookmeta get libex:B08G9PRS1K --region uk
 dotnet audiobookmeta get audiosilo:work/project-hail-mary
+dotnet audiobookmeta get lismio:38299
 ```
 
 Libex ASINs are normalized to uppercase and must contain exactly ten letters or digits. Human output includes authors, narrators, series, duration, release details, rating, availability, regions, links, and a cleaned description when Libex supplies them.
+
+Lismio searches hydrate each result with its detail page. That adds contributor roles, editions, EAN,
+collections, and direct shop links for services such as Audible, BookBeat, Deezer, Spotify, Storytel,
+and other shops catalogued by Lismio. Human search output lists the available shop names; `get` prints
+the URLs, and `--json` includes them in `shop_links` for both search and direct retrieval.
 
 Not every provider supports direct retrieval; generic Audiobookshelf-compatible providers are usually search-only.
 

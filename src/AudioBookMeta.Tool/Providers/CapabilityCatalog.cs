@@ -9,7 +9,7 @@ internal static class CapabilityCatalog
     [
         "search", "free_text_query", "title_filter", "author_filter", "narrator_filter", "series_filter",
         "isbn_filter", "asin_filter", "language_filter", "region_filter", "quick_search", "get_by_id",
-        "bulk_get", "chapters", "author_search", "series_search", "native_sort", "native_pagination", "health"
+        "bulk_get", "chapters", "author_search", "series_search", "native_sort", "native_pagination", "shop_links", "health"
     ];
 
     public static ProviderCapabilities Create(ProviderConfig config, params string[] supported)

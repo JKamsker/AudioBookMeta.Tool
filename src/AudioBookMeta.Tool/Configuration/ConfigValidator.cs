@@ -4,7 +4,7 @@ namespace AudiobookMeta.Tool.Configuration;
 
 public static class ConfigValidator
 {
-    private static readonly HashSet<string> AdapterTypes = new(StringComparer.OrdinalIgnoreCase) { "abs", "libex", "audiosilo" };
+    private static readonly HashSet<string> AdapterTypes = new(StringComparer.OrdinalIgnoreCase) { "abs", "libex", "audiosilo", "lismio" };
 
     public static IReadOnlyList<string> Validate(AudiobookMetaConfig config, bool resolveSecrets)
     {
@@ -28,6 +28,9 @@ public static class ConfigValidator
                 errors.Add($"provider '{provider.Id}' uses public HTTP without allow_insecure_http = true");
             if (provider.Timeout is { } providerTimeout && providerTimeout <= TimeSpan.Zero)
                 errors.Add($"provider '{provider.Id}' timeout must be positive");
+            if (provider.Type.Equals("lismio", StringComparison.OrdinalIgnoreCase)
+                && provider.Region is not null && !IsLocale(provider.Region))
+                errors.Add($"provider '{provider.Id}' region must be a Lismio locale such as 'de'");
             if (provider.Auth is not null && !SecretResolver.HasValidSyntax(provider.Auth))
                 errors.Add($"provider '{provider.Id}' has invalid auth secret reference syntax");
             if (resolveSecrets && provider.Auth is not null)
@@ -87,6 +90,13 @@ public static class ConfigValidator
     private static bool IsLocal(string host)
         => host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || host.EndsWith(".local", StringComparison.OrdinalIgnoreCase) ||
            System.Net.IPAddress.TryParse(host, out var ip) && IsPrivate(ip);
+
+    private static bool IsLocale(string value)
+    {
+        var locale = value.Trim().Trim('/');
+        return locale.Length > 0
+            && locale.All(character => char.IsAsciiLetterOrDigit(character) || character == '-');
+    }
 
     private static bool IsPrivate(System.Net.IPAddress ip)
     {

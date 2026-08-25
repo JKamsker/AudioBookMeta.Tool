@@ -40,7 +40,7 @@ default_group = "default"
 limit = 10
 limit_per_provider = 10
 provider_timeout = "4s"
-deadline = "8s"
+deadline = "20s"
 max_concurrency = 8
 cache_ttl = "15m"
 
@@ -59,13 +59,22 @@ enabled = true
 priority = 95
 groups = ["default", "audiobook", "open-data"]
 
+[providers.lismio]
+type = "lismio"
+base_url = "https://lismio.app"
+enabled = true
+region = "de"
+priority = 90
+groups = ["default", "audiobook", "shop-links"]
+
 [groups]
-default = ["libex", "audiosilo"]
-audiobook = ["libex", "audiosilo"]
+default = ["libex", "audiosilo", "lismio"]
+audiobook = ["libex", "audiosilo", "lismio"]
 open-data = ["audiosilo"]
+shop-links = ["lismio"]
 ```
 
-Provider IDs such as `libex` and `audiosilo` are the names used by `--provider`, `providers show`, and `get`.
+Provider IDs such as `libex`, `audiosilo`, and `lismio` are the names used by `--provider`, `providers show`, and `get`.
 
 ## Search settings
 
@@ -103,6 +112,33 @@ AudioSilo supplies work and audiobook-recording metadata and supports ASIN/ISBN 
 type = "audiosilo"
 base_url = "https://meta.audiosilo.app"
 enabled = true
+```
+
+### Lismio
+
+Lismio supplies public catalogue metadata and direct listening or purchasing links. Search results are
+hydrated from their detail pages so normalized output includes authors, narrators, contributor roles,
+series, publisher, release date, duration, EAN, abridged state, descriptions, collections, versions,
+and shop URLs when Lismio provides them.
+
+```toml
+[providers.lismio]
+type = "lismio"
+base_url = "https://lismio.app"
+enabled = true
+region = "de"
+timeout = "15s"
+```
+
+`region` selects the Lismio catalogue locale and defaults to `de`. The CLI recognizes links for Amazon
+Music, Apple Books, Apple Music, Audible, BookBeat, Deezer, Everand, Google Play Books, Kobo, Nextory,
+OverDrive, Spotify, Storytel, Thalia, and YouTube Music. Unrecognized external shop URLs are retained as
+`unknown`. Lismio search makes one detail request per candidate, so give the provider a longer timeout
+and ensure `search.deadline` is at least as long when `limit_per_provider` is high.
+
+```sh
+dotnet audiobookmeta search "Project Hail Mary" --provider lismio --json
+dotnet audiobookmeta get lismio:38299
 ```
 
 ### Audiobookshelf-compatible providers

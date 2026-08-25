@@ -73,6 +73,36 @@ public sealed class ConfigurationTests
         Assert.Throws<AudiobookMetaException>(() => new ConfigLoader(new ConfigPathResolver()).Load(path));
     }
 
+    [Fact]
+    public void Lismio_is_a_supported_provider_type()
+    {
+        var path = TemporaryConfig("""
+            version = 1
+            [providers.lismio]
+            type = "lismio"
+            base_url = "https://lismio.app"
+            region = "de"
+            """);
+
+        var config = new ConfigLoader(new ConfigPathResolver()).Load(path);
+
+        Assert.Equal("lismio", config.Providers["lismio"].Type);
+    }
+
+    [Fact]
+    public void Lismio_locale_is_validated_during_configuration_load()
+    {
+        var path = TemporaryConfig("""
+            version = 1
+            [providers.lismio]
+            type = "lismio"
+            base_url = "https://lismio.app"
+            region = "../../internal"
+            """);
+
+        Assert.Throws<AudiobookMetaException>(() => new ConfigLoader(new ConfigPathResolver()).Load(path));
+    }
+
     private static string TemporaryConfig(string content)
     {
         var path = Path.Combine(Path.GetTempPath(), $"audiobookmeta-test-{Guid.NewGuid():N}.toml");

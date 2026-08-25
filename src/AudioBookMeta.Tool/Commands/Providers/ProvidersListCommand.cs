@@ -48,6 +48,7 @@ public sealed class ProvidersListCommand(ConfigLoader loader, ProviderFactory fa
             ["get_by_id"] = "get",
             ["asin_filter"] = "ASIN",
             ["isbn_filter"] = "ISBN",
+            ["shop_links"] = "shops",
             ["health"] = "health"
         };
         return labels.Where(item => capabilities[item.Key] == AudiobookMeta.Tool.Model.CapabilityState.Supported).Select(item => item.Value).ToList();

@@ -18,7 +18,7 @@ public sealed class GetSettings : GlobalSettings
     [CommandOption("--raw")]
     public bool Raw { get; init; }
     [CommandOption("--region <CODE>")]
-    [Description("Audible region code; overrides the selected provider's configured region.")]
+    [Description("Provider region or locale; overrides the selected provider's configured value.")]
     public string? Region { get; init; }
 
     public override ValidationResult Validate()
@@ -46,7 +46,7 @@ public sealed class GetCommand(ConfigLoader loader, ProviderFactory factory, Res
 
         var adapter = factory.Create(provider);
         if (settings.Region is not null && adapter.Capabilities["region_filter"] != CapabilityState.Supported)
-            throw new AudiobookMetaException($"Provider '{providerId}' does not support region selection.", ExitCodes.UnsupportedCapability, "Remove --region or select a Libex provider.");
+            throw new AudiobookMetaException($"Provider '{providerId}' does not support region selection.", ExitCodes.UnsupportedCapability, "Remove --region or select a provider that supports regions or locales.");
 
         using var timeout = new CancellationTokenSource(provider.Timeout ?? config.Search.ProviderTimeout);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token, cancellationToken);
