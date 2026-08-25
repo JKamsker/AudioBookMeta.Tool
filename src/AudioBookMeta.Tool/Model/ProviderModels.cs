@@ -21,6 +21,7 @@ public sealed record ProviderSearchResponse
     public List<SearchResult> Candidates { get; init; } = [];
     public List<string> Warnings { get; init; } = [];
     public int RequestCount { get; init; }
+    public List<string> LookupStrategies { get; init; } = [];
 }
 
 public sealed record ProviderTestResult(

@@ -91,6 +91,7 @@ public sealed class SearchEngine(
                     ElapsedMs = timer.ElapsedMilliseconds,
                     CandidateCount = response.Candidates.Count,
                     RequestCount = cacheHit ? 0 : response.RequestCount,
+                    LookupStrategies = response.LookupStrategies,
                     Message = cacheHit ? "cache hit" : null
                 });
             }
@@ -131,6 +132,10 @@ public sealed class SearchEngine(
         request.Series,
         request.Isbn,
         request.Asin,
+        request.Sku,
+        request.Publisher,
+        request.DurationSeconds,
+        request.DurationToleranceSeconds,
         request.Language,
         request.Region,
         request.Page,

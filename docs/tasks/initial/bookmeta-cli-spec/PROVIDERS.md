@@ -6,7 +6,7 @@ This catalog covers Libex plus every project in the supplied Audiobookshelf comm
 
 | Provider/project | Recommended CLI adapter | Main scope | Notes |
 |---|---|---|---|
-| Libex | `libex` native | Audible metadata | Rich API: quick search, structured search, ASIN lookup, authors, narrators, series, chapters, DB filters, releases. |
+| Libex | `libex` native | Audible metadata | Rich API: quick/structured search, ASIN and SKU/UFID lookup, author fallback, narrators, series, chapters, DB filters, releases. |
 | abs-tract | generic `abs` per endpoint | Goodreads + Kindle | Separate Goodreads and regional Kindle base URLs. |
 | lubimyczytac-abs | `abs` | Polish books | LubimyCzytac metadata; detailed book fields and covers. |
 | audioteka-abs | `abs` | Audioteka PL/CZ | Audiobook-specific metadata including lectors/narrators. |

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Net;
 using System.Text.Json;
 using AudiobookMeta.Tool.Configuration;
 using AudiobookMeta.Tool.Model;
@@ -14,7 +15,8 @@ public sealed class LibexProvider(ProviderConfig config, ProviderTransport trans
     public string AdapterType => "libex";
     public ProviderCapabilities Capabilities { get; } = CapabilityCatalog.Create(config,
         "search", "free_text_query", "title_filter", "author_filter", "narrator_filter", "region_filter", "quick_search",
-        "asin_filter", "get_by_id", "bulk_get", "chapters", "author_search", "series_search", "native_sort", "native_pagination", "health");
+        "asin_filter", "sku_lookup", "duration_metadata", "author_fallback", "get_by_id", "bulk_get", "chapters",
+        "author_search", "series_search", "native_sort", "native_pagination", "health");
 
     public async Task<ProviderSearchResponse> SearchAsync(SearchRequest request, bool includeRaw, CancellationToken cancellationToken)
     {
@@ -25,13 +27,20 @@ public sealed class LibexProvider(ProviderConfig config, ProviderTransport trans
 
     private async Task<ProviderSearchResponse> SearchRawAsync(SearchRequest request, CancellationToken cancellationToken)
     {
+        if (!string.IsNullOrWhiteSpace(request.Sku))
+        {
+            var results = await GetBySkuAsync(request.Sku, true, cancellationToken);
+            return new ProviderSearchResponse { Candidates = results, RequestCount = 1, LookupStrategies = ["sku"] };
+        }
         if (!string.IsNullOrWhiteSpace(request.Asin))
         {
-            var result = await GetRawAsync(request.Asin, request.Region, cancellationToken);
-            return new ProviderSearchResponse { Candidates = [result], RequestCount = 1 };
+            var result = (await GetRawAsync(request.Asin, request.Region, cancellationToken)) with { LookupStrategy = "asin" };
+            return new ProviderSearchResponse { Candidates = [result], RequestCount = 1, LookupStrategies = ["asin"] };
         }
 
         var candidates = new List<SearchResult>();
+        var warnings = new List<string>();
+        var strategies = new List<string>();
         var requestCount = 0;
         var text = request.Query ?? request.Title;
         if (request.Page is null && !request.Exact && !string.IsNullOrWhiteSpace(text))
@@ -40,9 +49,17 @@ public sealed class LibexProvider(ProviderConfig config, ProviderTransport trans
             [
                 new("keywords", text), new("region", request.Region ?? config.Region)
             ]);
-            var quick = await transport.GetAsync(config, quickUri, cancellationToken);
-            candidates.AddRange(ParseBooks(quick.Content, true));
             requestCount++;
+            strategies.Add("quick_search");
+            try
+            {
+                var quick = await transport.GetAsync(config, quickUri, cancellationToken);
+                candidates.AddRange(ParseBooks(quick.Content, true).Select(result => result with { LookupStrategy = "quick_search" }));
+            }
+            catch (ProviderException exception) when (IsNotFound(exception))
+            {
+                warnings.Add("quick search returned no results (HTTP 404)");
+            }
         }
 
         if (requestCount == 0 || candidates.Count < request.LimitPerProvider || HasStructuredHints(request))
@@ -53,19 +70,43 @@ public sealed class LibexProvider(ProviderConfig config, ProviderTransport trans
                 new("query", request.Query), new("keywords", request.Query), new("limit", Math.Min(request.LimitPerProvider, LibexDefaults.MaximumSearchLimit).ToString()),
                 new("page", (request.Page ?? LibexDefaults.DefaultSearchPage).ToString()), new("cache", "false"), new("region", request.Region ?? config.Region)
             ]);
-            var search = await transport.GetAsync(config, uri, cancellationToken);
-            candidates.AddRange(ParseBooks(search.Content, true));
             requestCount++;
+            strategies.Add("structured_search");
+            try
+            {
+                var search = await transport.GetAsync(config, uri, cancellationToken);
+                candidates.AddRange(ParseBooks(search.Content, true).Select(result => result with { LookupStrategy = "structured_search" }));
+            }
+            catch (ProviderException exception) when (IsNotFound(exception))
+            {
+                warnings.Add("structured search returned no results (HTTP 404)");
+            }
+        }
+
+        if (candidates.Count == 0 && request.Page is null && !string.IsNullOrWhiteSpace(request.Author))
+        {
+            requestCount++;
+            strategies.Add("author_fallback");
+            try
+            {
+                var fallback = await GetByAuthorCoreAsync(request.Author, request.Region, true, cancellationToken);
+                candidates.AddRange(fallback.Select(result => result with { LookupStrategy = "author_fallback" }));
+                if (fallback.Count > 0)
+                    warnings.Add("structured search returned no candidates; used native author lookup fallback");
+            }
+            catch (ProviderException exception) when (IsNotFound(exception))
+            {
+                warnings.Add("native author lookup fallback returned no results (HTTP 404)");
+            }
         }
 
         var unique = candidates.GroupBy(item => item.ProviderRecordId ?? $"{item.Title}|{string.Join(',', item.Authors)}", StringComparer.OrdinalIgnoreCase)
             .Select(group => group.First()).Take(request.LimitPerProvider * 2).ToList();
-        var warnings = new List<string>();
         if (!string.IsNullOrWhiteSpace(request.Isbn))
             warnings.Add("Libex live search does not document an ISBN filter; ISBN was retained for local ranking only");
         if (!string.IsNullOrWhiteSpace(request.Series))
             warnings.Add("Libex live search does not document a series filter; series was retained for local ranking only");
-        return new ProviderSearchResponse { Candidates = unique, RequestCount = requestCount, Warnings = warnings };
+        return new ProviderSearchResponse { Candidates = unique, RequestCount = requestCount, Warnings = warnings, LookupStrategies = strategies };
     }
 
     public async Task<SearchResult> GetAsync(string id, string? region, bool includeRaw, CancellationToken cancellationToken)
@@ -88,13 +129,8 @@ public sealed class LibexProvider(ProviderConfig config, ProviderTransport trans
         bool includeRaw,
         CancellationToken cancellationToken)
     {
-        var uri = ProviderTransport.BuildUri(config.BaseUrl, "author/books",
-        [
-            new("name", author),
-            new("region", region ?? config.Region)
-        ]);
-        var response = await transport.GetAsync(config, uri, cancellationToken);
-        return ParseBooks(response.Content, includeRaw);
+        var results = await GetByAuthorCoreAsync(author, region, includeRaw, cancellationToken);
+        return results.Select(result => result with { LookupStrategy = "author_books" }).ToList();
     }
 
     private async Task<SearchResult> GetRawAsync(string id, string? region, CancellationToken cancellationToken)
@@ -125,49 +161,120 @@ public sealed class LibexProvider(ProviderConfig config, ProviderTransport trans
 
     private async Task<ProviderSearchResponse> SearchTypedAsync(SearchRequest request, CancellationToken cancellationToken)
     {
+        if (!string.IsNullOrWhiteSpace(request.Sku))
+        {
+            var results = await GetBySkuAsync(request.Sku, false, cancellationToken);
+            return new ProviderSearchResponse { Candidates = results, RequestCount = 1, LookupStrategies = ["sku"] };
+        }
         if (!string.IsNullOrWhiteSpace(request.Asin))
         {
-            var result = await GetAsync(request.Asin, request.Region, false, cancellationToken);
-            return new ProviderSearchResponse { Candidates = [result], RequestCount = 1 };
+            var result = (await GetAsync(request.Asin, request.Region, false, cancellationToken)) with { LookupStrategy = "asin" };
+            return new ProviderSearchResponse { Candidates = [result], RequestCount = 1, LookupStrategies = ["asin"] };
         }
 
         var books = new List<AudiobookMeta.Tool.Generated.Libex.Models.BookResponse>();
+        var candidates = new List<SearchResult>();
+        var warnings = new List<string>();
+        var strategies = new List<string>();
         var requestCount = 0;
         var text = request.Query ?? request.Title;
         if (request.Page is null && !request.Exact && !string.IsNullOrWhiteSpace(text))
         {
-            var quick = await KiotaInvoker.InvokeAsync(Id, () => client.QuickSearch.GetAsync(options =>
-            {
-                options.QueryParameters.Keywords = text;
-                options.QueryParameters.Region = request.Region ?? config.Region;
-            }, cancellationToken), cancellationToken);
-            books.AddRange(quick ?? []);
             requestCount++;
+            strategies.Add("quick_search");
+            try
+            {
+                var quick = await KiotaInvoker.InvokeAsync(Id, () => client.QuickSearch.GetAsync(options =>
+                {
+                    options.QueryParameters.Keywords = text;
+                    options.QueryParameters.Region = request.Region ?? config.Region;
+                }, cancellationToken), cancellationToken);
+                books.AddRange(quick ?? []);
+                candidates.AddRange(books.Select(mapper.Map).Where(result => result is not null).Select(result => result! with { LookupStrategy = "quick_search" }));
+            }
+            catch (ProviderException exception) when (IsNotFound(exception))
+            {
+                warnings.Add("quick search returned no results (HTTP 404)");
+            }
         }
         if (requestCount == 0 || books.Count < request.LimitPerProvider || HasStructuredHints(request))
         {
-            var found = await KiotaInvoker.InvokeAsync(Id, () => client.Search.GetAsync(options =>
-            {
-                options.QueryParameters.Title = request.Title;
-                options.QueryParameters.Author = request.Author;
-                options.QueryParameters.Narrator = request.Narrator;
-                options.QueryParameters.Query = request.Query;
-                options.QueryParameters.Keywords = request.Query;
-                options.QueryParameters.Limit = Math.Min(request.LimitPerProvider, LibexDefaults.MaximumSearchLimit);
-                options.QueryParameters.Page = request.Page ?? LibexDefaults.DefaultSearchPage;
-                options.QueryParameters.Cache = false;
-                options.QueryParameters.Region = request.Region ?? config.Region;
-            }, cancellationToken), cancellationToken);
-            books.AddRange(found ?? []);
             requestCount++;
+            strategies.Add("structured_search");
+            try
+            {
+                var found = await KiotaInvoker.InvokeAsync(Id, () => client.Search.GetAsync(options =>
+                {
+                    options.QueryParameters.Title = request.Title;
+                    options.QueryParameters.Author = request.Author;
+                    options.QueryParameters.Narrator = request.Narrator;
+                    options.QueryParameters.Query = request.Query;
+                    options.QueryParameters.Keywords = request.Query;
+                    options.QueryParameters.Limit = Math.Min(request.LimitPerProvider, LibexDefaults.MaximumSearchLimit);
+                    options.QueryParameters.Page = request.Page ?? LibexDefaults.DefaultSearchPage;
+                    options.QueryParameters.Cache = false;
+                    options.QueryParameters.Region = request.Region ?? config.Region;
+                }, cancellationToken), cancellationToken);
+                books.AddRange(found ?? []);
+                candidates.AddRange((found ?? []).Select(mapper.Map).Where(result => result is not null).Select(result => result! with { LookupStrategy = "structured_search" }));
+            }
+            catch (ProviderException exception) when (IsNotFound(exception))
+            {
+                warnings.Add("structured search returned no results (HTTP 404)");
+            }
         }
-        var candidates = books.Select(mapper.Map).Where(result => result is not null).Select(result => result!)
-            .GroupBy(result => result.ProviderRecordId ?? $"{result.Title}|{string.Join(',', result.Authors)}", StringComparer.OrdinalIgnoreCase)
+
+        if (candidates.Count == 0 && request.Page is null && !string.IsNullOrWhiteSpace(request.Author))
+        {
+            requestCount++;
+            strategies.Add("author_fallback");
+            try
+            {
+                var fallback = await GetByAuthorCoreAsync(request.Author, request.Region, false, cancellationToken);
+                candidates.AddRange(fallback.Select(result => result with { LookupStrategy = "author_fallback" }));
+                if (fallback.Count > 0)
+                    warnings.Add("structured search returned no candidates; used native author lookup fallback");
+            }
+            catch (ProviderException exception) when (IsNotFound(exception))
+            {
+                warnings.Add("native author lookup fallback returned no results (HTTP 404)");
+            }
+        }
+
+        candidates = candidates.GroupBy(result => result.ProviderRecordId ?? $"{result.Title}|{string.Join(',', result.Authors)}", StringComparer.OrdinalIgnoreCase)
             .Select(group => group.First()).Take(request.LimitPerProvider * 2).ToList();
-        var warnings = new List<string>();
         if (!string.IsNullOrWhiteSpace(request.Isbn)) warnings.Add("Libex live search does not document an ISBN filter; ISBN was retained for local ranking only");
         if (!string.IsNullOrWhiteSpace(request.Series)) warnings.Add("Libex live search does not document a series filter; series was retained for local ranking only");
-        return new ProviderSearchResponse { Candidates = candidates, RequestCount = requestCount, Warnings = warnings };
+        return new ProviderSearchResponse { Candidates = candidates, RequestCount = requestCount, Warnings = warnings, LookupStrategies = strategies };
+    }
+
+    private async Task<List<SearchResult>> GetBySkuAsync(string sku, bool includeRaw, CancellationToken cancellationToken)
+    {
+        var uri = ProviderTransport.BuildUri(config.BaseUrl, $"book/sku/{Uri.EscapeDataString(sku.Trim())}", []);
+        try
+        {
+            var response = await transport.GetAsync(config, uri, cancellationToken);
+            return ParseBooks(response.Content, includeRaw).Select(result => result with { LookupStrategy = "sku" }).ToList();
+        }
+        catch (ProviderException exception) when (IsNotFound(exception))
+        {
+            return [];
+        }
+    }
+
+    private async Task<List<SearchResult>> GetByAuthorCoreAsync(
+        string author,
+        string? region,
+        bool includeRaw,
+        CancellationToken cancellationToken)
+    {
+        var uri = ProviderTransport.BuildUri(config.BaseUrl, "author/books",
+        [
+            new("name", author),
+            new("region", region ?? config.Region)
+        ]);
+        var response = await transport.GetAsync(config, uri, cancellationToken);
+        return ParseBooks(response.Content, includeRaw);
     }
 
     private List<SearchResult> ParseBooks(byte[] content, bool includeRaw)
@@ -244,4 +351,7 @@ public sealed class LibexProvider(ProviderConfig config, ProviderTransport trans
 
     private static bool HasStructuredHints(SearchRequest request)
         => new[] { request.Author, request.Narrator, request.Title }.Any(value => !string.IsNullOrWhiteSpace(value));
+
+    private static bool IsNotFound(ProviderException exception)
+        => exception.StatusCode == (int)HttpStatusCode.NotFound;
 }

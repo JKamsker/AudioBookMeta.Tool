@@ -7,8 +7,8 @@ internal static class CapabilityCatalog
 {
     private static readonly string[] Names =
     [
-        "search", "free_text_query", "title_filter", "author_filter", "narrator_filter", "series_filter",
-        "isbn_filter", "asin_filter", "language_filter", "region_filter", "quick_search", "get_by_id",
+        "search", "free_text_query", "title_filter", "author_filter", "narrator_filter", "series_filter", "publisher_filter",
+        "isbn_filter", "asin_filter", "sku_filter", "sku_lookup", "language_filter", "region_filter", "quick_search", "author_fallback", "duration_metadata", "get_by_id",
         "bulk_get", "chapters", "author_search", "series_search", "native_sort", "native_pagination", "shop_links", "health"
     ];
 

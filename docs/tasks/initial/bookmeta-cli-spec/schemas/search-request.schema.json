@@ -46,6 +46,30 @@
         "null"
       ]
     },
+    "sku": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "publisher": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "duration_seconds": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "duration_tolerance_seconds": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 90
+    },
     "language": {
       "type": [
         "string",

@@ -27,6 +27,9 @@
         "null"
       ]
     },
+    "lookup_strategy": {
+      "type": "string"
+    },
     "title": {
       "type": "string"
     },

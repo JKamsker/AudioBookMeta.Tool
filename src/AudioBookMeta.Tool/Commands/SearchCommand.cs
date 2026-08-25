@@ -33,6 +33,17 @@ public sealed class SearchSettings : GlobalSettings
     public string? Isbn { get; init; }
     [CommandOption("--asin <VALUE>")]
     public string? Asin { get; init; }
+    [CommandOption("--sku|--ufid <VALUE>")]
+    [Description("Audible SKU/UFID (alias: --ufid). Uses native lookup where supported and local identifier ranking elsewhere.")]
+    public string? Sku { get; init; }
+    [CommandOption("--publisher <TEXT>")]
+    public string? Publisher { get; init; }
+    [CommandOption("--duration <DURATION>")]
+    [Description("Known local recording duration, for example 22642s, 377m, or 6.3h (local ranking only).")]
+    public string? Duration { get; init; }
+    [CommandOption("--duration-tolerance <DURATION>")]
+    [Description("Allowed duration difference; defaults to 90s and requires --duration.")]
+    public string? DurationTolerance { get; init; }
     [CommandOption("--language <CODE>")]
     public string? Language { get; init; }
     [CommandOption("--region <CODE>")]
@@ -70,8 +81,8 @@ public sealed class SearchSettings : GlobalSettings
 
     public override ValidationResult Validate()
     {
-        if (!new[] { Query, Title, Author, Narrator, Series, Isbn, Asin }.Any(value => !string.IsNullOrWhiteSpace(value)))
-            return ValidationResult.Error("Supply QUERY or at least one of --title, --author, --narrator, --series, --isbn, or --asin.");
+        if (!new[] { Query, Title, Author, Narrator, Series, Isbn, Asin, Sku, Publisher }.Any(value => !string.IsNullOrWhiteSpace(value)))
+            return ValidationResult.Error("Supply QUERY or at least one metadata or identifier option such as --title, --author, --isbn, --asin, or --sku.");
         if (Json && JsonLines)
             return ValidationResult.Error("--json and --jsonl are mutually exclusive.");
         if (Raw && !Json && !JsonLines)
@@ -84,6 +95,12 @@ public sealed class SearchSettings : GlobalSettings
             return ValidationResult.Error("--timeout must be a positive duration such as 500ms, 4s, or 1m.");
         if (Deadline is not null && !DurationParser.TryParse(Deadline, out _))
             return ValidationResult.Error("--deadline must be a positive duration such as 4s or 1m.");
+        if (Duration is not null && !DurationParser.TryParse(Duration, out _))
+            return ValidationResult.Error("--duration must be a positive duration such as 22642s, 90m, or 06:17:22.");
+        if (DurationTolerance is not null && !DurationParser.TryParse(DurationTolerance, out _))
+            return ValidationResult.Error("--duration-tolerance must be a positive duration such as 90s or 2m.");
+        if (DurationTolerance is not null && Duration is null)
+            return ValidationResult.Error("--duration-tolerance requires --duration.");
         return ValidationResult.Success();
     }
 }
@@ -96,6 +113,8 @@ public sealed class SearchCommand(ConfigLoader loader, SearchEngine engine, Sear
         var config = loader.Load(settings.ConfigPath);
         var providerTimeout = Parse(settings.Timeout);
         var deadline = Parse(settings.Deadline);
+        var duration = Parse(settings.Duration);
+        var durationTolerance = Parse(settings.DurationTolerance) ?? TimeSpan.FromSeconds(90);
         console.Verbose(settings.Verbose,
             $"config={config.SourcePath}; timeout={providerTimeout ?? config.Search.ProviderTimeout}; deadline={deadline ?? config.Search.Deadline}; limit={settings.Limit ?? config.Search.Limit}");
         var request = new SearchRequest
@@ -107,6 +126,10 @@ public sealed class SearchCommand(ConfigLoader loader, SearchEngine engine, Sear
             Series = settings.Series,
             Isbn = settings.Isbn,
             Asin = settings.Asin,
+            Sku = settings.Sku,
+            Publisher = settings.Publisher,
+            DurationSeconds = duration is null ? null : (long)Math.Round(duration.Value.TotalSeconds),
+            DurationToleranceSeconds = (long)Math.Round(durationTolerance.TotalSeconds),
             Language = settings.Language,
             Region = settings.Region,
             Page = settings.Page,

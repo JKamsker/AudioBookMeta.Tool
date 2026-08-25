@@ -48,6 +48,8 @@ public sealed class ProvidersListCommand(ConfigLoader loader, ProviderFactory fa
             ["get_by_id"] = "get",
             ["asin_filter"] = "ASIN",
             ["isbn_filter"] = "ISBN",
+            ["sku_lookup"] = "SKU",
+            ["duration_metadata"] = "duration",
             ["shop_links"] = "shops",
             ["health"] = "health"
         };

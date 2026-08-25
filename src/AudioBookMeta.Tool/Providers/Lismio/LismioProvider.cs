@@ -15,7 +15,7 @@ public sealed class LismioProvider(ProviderConfig config, ProviderTransport tran
     public string Id => config.Id;
     public string AdapterType => "lismio";
     public ProviderCapabilities Capabilities { get; } = CapabilityCatalog.Create(
-        config, "search", "free_text_query", "region_filter", "get_by_id", "native_pagination", "shop_links");
+        config, "search", "free_text_query", "region_filter", "duration_metadata", "get_by_id", "native_pagination", "shop_links");
 
     public async Task<ProviderSearchResponse> SearchAsync(
         SearchRequest request,
@@ -29,26 +29,30 @@ public sealed class LismioProvider(ProviderConfig config, ProviderTransport tran
         var response = await transport.GetHtmlAsync(config, uri, cancellationToken);
         var html = Encoding.UTF8.GetString(response.Content);
         var summaries = LismioPageParser.ParsePage(html, response.Uri, page, request.LimitPerProvider);
-        if (!request.IncludeShopLinks)
+        var hydrateDetails = request.IncludeShopLinks || request.DurationSeconds is not null
+            || !string.IsNullOrWhiteSpace(request.Publisher) || !string.IsNullOrWhiteSpace(request.Narrator);
+        if (!hydrateDetails)
         {
             return new ProviderSearchResponse
             {
                 Candidates = summaries.Items.Select(summary =>
-                    mapper.MapSummary(summary, locale, includeRaw)).ToList(),
-                RequestCount = 1
+                    mapper.MapSummary(summary, locale, includeRaw) with { LookupStrategy = "catalog_search" }).ToList(),
+                RequestCount = 1,
+                LookupStrategies = ["catalog_search"]
             };
         }
         var warnings = new string?[summaries.Items.Count];
         var results = new SearchResult[summaries.Items.Count];
         using var gate = new SemaphoreSlim(DetailConcurrency);
         var tasks = summaries.Items.Select((summary, index) => HydrateAsync(
-            summary, index, locale, includeRaw, results, warnings, gate, cancellationToken));
+            summary, index, locale, includeRaw, request.IncludeShopLinks, results, warnings, gate, cancellationToken));
         await Task.WhenAll(tasks);
         return new ProviderSearchResponse
         {
             Candidates = [.. results],
             Warnings = warnings.Where(message => message is not null).Select(message => message!).ToList(),
-            RequestCount = 1 + summaries.Items.Count
+            RequestCount = 1 + summaries.Items.Count,
+            LookupStrategies = ["catalog_search", "detail_hydration"]
         };
     }
 
@@ -98,6 +102,7 @@ public sealed class LismioProvider(ProviderConfig config, ProviderTransport tran
         int index,
         string locale,
         bool includeRaw,
+        bool includeShopLinks,
         SearchResult[] results,
         string?[] warnings,
         SemaphoreSlim gate,
@@ -109,7 +114,8 @@ public sealed class LismioProvider(ProviderConfig config, ProviderTransport tran
             var response = await transport.GetHtmlAsync(config, DetailUri(summary.Id, locale), cancellationToken);
             var html = Encoding.UTF8.GetString(response.Content);
             var book = LismioPageParser.ParseAudiobook(html, response.Uri, summary.Id);
-            results[index] = mapper.Map(book, locale, Raw(includeRaw, html));
+            var mapped = mapper.Map(book, locale, Raw(includeRaw, html)) with { LookupStrategy = "detail_hydration" };
+            results[index] = includeShopLinks ? mapped : WithoutShopLinks(mapped);
         }
         catch (OperationCanceledException)
         {
@@ -119,7 +125,7 @@ public sealed class LismioProvider(ProviderConfig config, ProviderTransport tran
         {
             var message = $"detail hydration failed for Lismio audiobook {summary.Id}: {exception.Message}";
             warnings[index] = message;
-            results[index] = mapper.MapSummary(summary, locale, includeRaw, message);
+            results[index] = mapper.MapSummary(summary, locale, includeRaw, message) with { LookupStrategy = "catalog_search" };
         }
         finally
         {
@@ -152,7 +158,8 @@ public sealed class LismioProvider(ProviderConfig config, ProviderTransport tran
     {
         var values = new[]
         {
-            request.Query, request.Title, request.Author, request.Narrator, request.Series, request.Isbn, request.Asin
+            request.Query, request.Title, request.Author, request.Narrator, request.Series, request.Isbn, request.Asin,
+            request.Sku, request.Publisher
         };
         return string.Join(' ', values.Where(value => !string.IsNullOrWhiteSpace(value)).Select(value => value!.Trim()));
     }
@@ -179,4 +186,10 @@ public sealed class LismioProvider(ProviderConfig config, ProviderTransport tran
             ExitCodes.Usage,
             "Use a positive numeric Lismio audiobook ID or audiobook URL.");
     }
+
+    private static SearchResult WithoutShopLinks(SearchResult result) => result with
+    {
+        ShopLinks = [],
+        Versions = result.Versions.Select(version => version with { ShopLinks = [] }).ToList()
+    };
 }

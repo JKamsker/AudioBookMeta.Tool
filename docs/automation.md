@@ -20,6 +20,8 @@ Top-level JSON documents carry `"schema_version": 1`. Search output conforms to 
 
 Within schema v1, new optional fields may be added, but existing fields are not repurposed. A breaking change requires a new schema version.
 
+Search results include an optional `lookup_strategy` describing how a provider found the record. Each `provider_status` includes `lookup_strategies`, including attempted strategies that returned no candidates. Libex values include `sku`, `quick_search`, `structured_search`, and `author_fallback`.
+
 `author books --json` emits `{ "schema_version": 1, "request": {...}, "results": [...] }`. Its normalized results use the same result shape as search and get. `--raw` adds unversioned provider payloads and therefore requires `--json`.
 
 ## JSON Lines
@@ -71,6 +73,8 @@ By default, one failed provider does not discard successful results or make the 
 ```sh
 dotnet audiobookmeta search "Dune" --json --strict
 ```
+
+Provider-native no-result responses, including Libex HTTP 404 responses from search and author fallback endpoints, produce provider status `empty` and exit code `0`. Connectivity, authentication, rate-limit, malformed-response, and server errors remain provider failures.
 
 ## Errors and diagnostics
 

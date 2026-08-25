@@ -58,6 +58,12 @@
             "type": "integer",
             "minimum": 0
           },
+          "lookup_strategies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "message": {
             "type": "string"
           }

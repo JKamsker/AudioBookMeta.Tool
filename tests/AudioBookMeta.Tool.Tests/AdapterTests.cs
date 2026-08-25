@@ -157,6 +157,30 @@ public sealed class AdapterTests
     }
 
     [Fact]
+    public async Task AudioSilo_duration_hint_automatically_expands_recordings()
+    {
+        var requests = 0;
+        var factory = new TestHttpFactory((request, _) =>
+        {
+            requests++;
+            return Task.FromResult(request.RequestUri!.AbsolutePath.EndsWith("/search", StringComparison.Ordinal)
+                ? TestHttpFactory.Json("""{"results":[{"kind":"work","id":"the-work","title":"The Work","authors":[],"series":null,"narrators":[]}]}""")
+                : TestHttpFactory.Json("""{"id":"the-work","title":"The Work","authors":[],"series":[],"recordings":[{"id":"first","runtime_min":120,"narrators":[]}]}"""));
+        });
+        var config = Config("audiosilo");
+        var provider = new AudioSiloProvider(config, new ProviderTransport(factory), new KiotaClientFactory(factory));
+
+        var response = await provider.SearchAsync(
+            new SearchRequest { Query = "the work", DurationSeconds = 7200 },
+            false,
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, requests);
+        Assert.Equal(7200, Assert.Single(response.Candidates).DurationSeconds);
+        Assert.Contains("edition_expansion", response.LookupStrategies);
+    }
+
+    [Fact]
     public async Task Lismio_search_hydrates_complete_metadata_and_shop_links()
     {
         var requests = 0;
@@ -246,6 +270,56 @@ public sealed class AdapterTests
         Assert.Null(book.DurationSeconds);
         Assert.Empty(book.ShopLinks);
         Assert.Contains("Project Hail Mary", book.Raw!.Value.GetProperty("card_html").GetString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Lismio_duration_hint_hydrates_details_without_exposing_shop_links()
+    {
+        var requests = 0;
+        var factory = new TestHttpFactory((request, _) =>
+        {
+            requests++;
+            return Task.FromResult(request.RequestUri!.AbsolutePath.EndsWith("/search", StringComparison.Ordinal)
+                ? TestHttpFactory.Html(LismioSearchHtml)
+                : TestHttpFactory.Html(LismioDetailHtml));
+        });
+        var provider = new LismioProvider(Config("lismio"), new ProviderTransport(factory));
+
+        var response = await provider.SearchAsync(
+            new SearchRequest { Query = "Project Hail Mary", DurationSeconds = 5220 },
+            false,
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, requests);
+        var result = Assert.Single(response.Candidates);
+        Assert.Equal(5220, result.DurationSeconds);
+        Assert.Empty(result.ShopLinks);
+        Assert.All(result.Versions, version => Assert.Empty(version.ShopLinks));
+        Assert.Equal("detail_hydration", result.LookupStrategy);
+    }
+
+    [Fact]
+    public async Task Abs_forwards_configured_sku_filter_and_normalizes_sku_identifiers()
+    {
+        var factory = new TestHttpFactory((request, _) =>
+        {
+            Assert.Contains("sku=BK_HOER_002668", request.RequestUri!.Query, StringComparison.Ordinal);
+            return Task.FromResult(TestHttpFactory.Json("""
+                {"matches":[{"id":"3844533796","title":"Bertrams Hotel","sku":"BK_HOER_002668"}]}
+                """));
+        });
+        var config = Config("abs") with
+        {
+            CapabilityOverrides = new Dictionary<string, CapabilityState> { ["sku_filter"] = CapabilityState.Supported }
+        };
+        var provider = new AbsProvider(config, new ProviderTransport(factory));
+
+        var response = await provider.SearchAsync(
+            new SearchRequest { Sku = "BK_HOER_002668" },
+            false,
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal("BK_HOER_002668", Assert.Single(response.Candidates).Identifiers.Other["sku"]);
     }
 
     [Fact]

@@ -92,6 +92,29 @@ public sealed class CliContractTests
     }
 
     [Fact]
+    public async Task Search_help_documents_edition_matching_inputs()
+    {
+        var result = await RunAsync("search", "--help");
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("--sku", result.Stdout, StringComparison.Ordinal);
+        Assert.Contains("--ufid", result.Stdout, StringComparison.Ordinal);
+        Assert.Contains("--duration", result.Stdout, StringComparison.Ordinal);
+        Assert.Contains("--duration-tolerance", result.Stdout, StringComparison.Ordinal);
+        Assert.Contains("--publisher", result.Stdout, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Duration_tolerance_requires_a_duration()
+    {
+        var result = await RunAsync("search", "dune", "--duration-tolerance", "90s", "--config", SampleConfig());
+
+        Assert.Equal(2, result.ExitCode);
+        Assert.Empty(result.Stdout);
+        Assert.Contains("requires --duration", result.Stderr, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task First_run_creates_platform_default_config_with_public_providers()
     {
         var directory = TemporaryDirectory();

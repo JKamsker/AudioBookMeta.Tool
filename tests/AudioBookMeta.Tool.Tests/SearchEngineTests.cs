@@ -57,6 +57,22 @@ public sealed class SearchEngineTests
     }
 
     [Fact]
+    public async Task Empty_provider_responses_are_successful_no_results()
+    {
+        var factory = new TestHttpFactory((_, _) => Task.FromResult(TestHttpFactory.Json("""{"matches":[]}""")));
+
+        var execution = await Engine(factory).ExecuteAsync(
+            Config(),
+            new SearchRequest { Query = "missing" },
+            Options(strict: true),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(ExitCodes.Success, execution.ExitCode);
+        Assert.Empty(execution.Response.Results);
+        Assert.All(execution.Response.ProviderStatus, status => Assert.Equal("empty", status.Status));
+    }
+
+    [Fact]
     public async Task Caller_cancellation_is_not_reported_as_provider_failure()
     {
         var factory = new TestHttpFactory(async (_, cancellationToken) =>

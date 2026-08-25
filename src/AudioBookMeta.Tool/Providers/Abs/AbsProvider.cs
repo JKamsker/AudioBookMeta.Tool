@@ -15,7 +15,7 @@ public sealed class AbsProvider(ProviderConfig config, ProviderTransport transpo
 
     public async Task<ProviderSearchResponse> SearchAsync(SearchRequest request, bool includeRaw, CancellationToken cancellationToken)
     {
-        var query = request.Query ?? request.Title ?? string.Join(' ', new[] { request.Author, request.Series, request.Narrator }.Where(value => !string.IsNullOrWhiteSpace(value)));
+        var query = request.Query ?? request.Title ?? string.Join(' ', new[] { request.Author, request.Series, request.Narrator, request.Publisher, request.Sku }.Where(value => !string.IsNullOrWhiteSpace(value)));
         var parameters = new List<KeyValuePair<string, string?>>
         {
             new("query", query), new("author", request.Author)
@@ -25,6 +25,8 @@ public sealed class AbsProvider(ProviderConfig config, ProviderTransport transpo
         AddSupported(parameters, "narrator", request.Narrator);
         AddSupported(parameters, "series", request.Series);
         AddSupported(parameters, "isbn", request.Isbn);
+        AddSupported(parameters, "sku", request.Sku);
+        AddSupported(parameters, "publisher", request.Publisher);
         AddSupported(parameters, "language", request.Language);
         var uri = ProviderTransport.BuildUri(config.BaseUrl, config.AppendSearchPath ? "search" : null, parameters);
         TransportResponse response;
@@ -36,7 +38,12 @@ public sealed class AbsProvider(ProviderConfig config, ProviderTransport transpo
         {
             return new ProviderSearchResponse { RequestCount = 1, Warnings = ["provider returned its configured 404-as-empty response"] };
         }
-        return Parse(response.Content, includeRaw);
+        var parsed = Parse(response.Content, includeRaw);
+        return parsed with
+        {
+            Candidates = parsed.Candidates.Select(result => result with { LookupStrategy = "search" }).ToList(),
+            LookupStrategies = ["search"]
+        };
     }
 
     public Task<SearchResult> GetAsync(string id, string? region, bool includeRaw, CancellationToken cancellationToken)
@@ -86,12 +93,12 @@ public sealed class AbsProvider(ProviderConfig config, ProviderTransport transpo
             Authors = JsonFields.Strings(item, "authors", "author"),
             Narrators = JsonFields.Strings(item, "narrators", "narrator", "lector"),
             Series = JsonFields.Series(item),
-            Identifiers = JsonFields.Identifiers(JsonFields.String(item, "asin"), JsonFields.String(item, "isbn")),
+            Identifiers = JsonFields.Identifiers(JsonFields.String(item, "asin"), JsonFields.String(item, "isbn"), OtherIdentifiers(item)),
             Publisher = JsonFields.String(item, "publisher"),
             PublishedYear = published,
             ReleaseDate = JsonFields.String(item, "releaseDate", "release_date"),
             Language = JsonFields.String(item, "language"),
-            DurationSeconds = JsonFields.Integer(item, "duration"),
+            DurationSeconds = JsonFields.Integer(item, "duration", "durationSeconds", "duration_seconds"),
             Genres = JsonFields.Strings(item, "genres"),
             Tags = JsonFields.Strings(item, "tags"),
             CoverUrl = JsonFields.String(item, "cover", "coverUrl"),
@@ -105,5 +112,20 @@ public sealed class AbsProvider(ProviderConfig config, ProviderTransport transpo
     {
         if (value is not null && Capabilities[name + "_filter"] == CapabilityState.Supported)
             parameters.Add(new(name, value));
+    }
+
+    private static Dictionary<string, object> OtherIdentifiers(JsonElement item)
+    {
+        var result = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+        Add("sku", "sku", "ufid");
+        Add("skuGroup", "skuGroup", "sku_group");
+        Add("ean", "ean");
+        return result;
+
+        void Add(string target, params string[] names)
+        {
+            if (JsonFields.String(item, names) is { } value)
+                result[target] = value;
+        }
     }
 }

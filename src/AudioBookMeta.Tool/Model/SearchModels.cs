@@ -12,6 +12,10 @@ public sealed record SearchRequest
     public string? Series { get; init; }
     public string? Isbn { get; init; }
     public string? Asin { get; init; }
+    public string? Sku { get; init; }
+    public string? Publisher { get; init; }
+    public long? DurationSeconds { get; init; }
+    public long DurationToleranceSeconds { get; init; } = 90;
     public string? Language { get; init; }
     public string? Region { get; init; }
     public int? Page { get; init; }
@@ -23,7 +27,7 @@ public sealed record SearchRequest
     public bool Editions { get; init; }
 
     [JsonIgnore]
-    public bool HasInput => new[] { Query, Title, Author, Narrator, Series, Isbn, Asin }
+    public bool HasInput => new[] { Query, Title, Author, Narrator, Series, Isbn, Asin, Sku, Publisher }
         .Any(value => !string.IsNullOrWhiteSpace(value));
 }
 
@@ -57,6 +61,8 @@ public sealed record SearchResult
     public required string Provider { get; init; }
     public required string ProviderType { get; init; }
     public string? ProviderRecordId { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? LookupStrategy { get; init; }
     public required string Title { get; init; }
     public string? Subtitle { get; init; }
     public List<string> Authors { get; init; } = [];
@@ -107,6 +113,7 @@ public sealed record ProviderStatus
     public long ElapsedMs { get; init; }
     public int CandidateCount { get; init; }
     public int RequestCount { get; init; }
+    public List<string> LookupStrategies { get; init; } = [];
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Message { get; init; }
 }

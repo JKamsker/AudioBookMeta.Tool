@@ -10,7 +10,7 @@ It is read-only: it does not edit your Audiobookshelf library, media files, or p
 
 | Provider | Configuration type | Search | Direct retrieval | Notable support |
 | --- | --- | --- | --- | --- |
-| [Libex](docs/configuration.md#libex) | `libex` | Yes | ASIN | Quick search, structured filters, native pagination, and author-book lookup |
+| [Libex](docs/configuration.md#libex) | `libex` | Yes | ASIN | SKU/UFID lookup, duration metadata, native pagination, and author fallback |
 | [AudioSilo Meta](docs/configuration.md#audiosilo) | `audiosilo` | Yes | Work ID, ISBN, or ASIN | Work and recording metadata, identifier lookup, and edition expansion |
 | [Lismio](docs/configuration.md#lismio) | `lismio` | Yes | Catalogue record ID | Native pagination, locale-specific catalogues, and opt-in shop-link hydration |
 | [Audiobookshelf-compatible providers](docs/configuration.md#audiobookshelf-compatible-providers) | `abs` | Yes | No | Generic support for the Audiobookshelf custom metadata-provider search contract; available fields vary by provider |
@@ -90,6 +90,9 @@ Use structured fields when you know them:
 dotnet audiobookmeta search --title "Dune" --author "Frank Herbert"
 dotnet audiobookmeta search --isbn 9780441172719 --exact
 dotnet audiobookmeta search --series "The Expanse" --narrator "Jefferson Mays"
+dotnet audiobookmeta search --provider libex --sku BK_HOER_002668
+dotnet audiobookmeta search --title "Bertrams Hotel" --author "Agatha Christie" \
+  --duration 22642s --duration-tolerance 90s --editions --explain
 ```
 
 By default, related results are grouped into works. Show individual editions and audiobook recordings with:
@@ -109,6 +112,10 @@ Useful search options include:
 | `--fresh` | Ignore cached results |
 | `--exact` | Disable fuzzy matching |
 | `--editions` | Show individual editions and recordings |
+| `--sku VALUE`, `--ufid VALUE` | Resolve an Audible SKU natively in Libex and use it as local identifier evidence elsewhere |
+| `--duration DURATION` | Rank editions against a known local duration; providers are never asked to filter by it |
+| `--duration-tolerance DURATION` | Set the acceptable duration difference (default: `90s`) |
+| `--publisher TEXT` | Add publisher evidence to local edition ranking |
 | `--shop-links` | Hydrate search cards with shop URLs; potentially much slower |
 | `--no-dedupe` | Show every provider result separately |
 | `--explain` | Show scoring evidence and provider warnings |
@@ -149,6 +156,8 @@ dotnet audiobookmeta author books "Andy Weir" --provider libex --region uk --jso
 ```
 
 When exactly one enabled Libex provider is configured, `--provider` is optional. Multiple enabled Libex instances require an explicit provider ID.
+
+Ordinary Libex search also uses this author endpoint automatically when structured and quick search return no candidates. JSON records expose `lookup_strategy`, and provider statuses expose `lookup_strategies`, so scripts can distinguish `sku`, `structured_search`, and `author_fallback` results. HTTP 404 from a Libex search or fallback is treated as a successful no-result response rather than a connectivity failure.
 
 ## Retrieve one result
 

@@ -80,6 +80,11 @@ Suggested maximum contributions:
 | Narrator similarity | 7 |
 | Language/region match | 5 |
 | Edition hints (publisher/year) | 5 |
+| Duration proximity | 25 when both durations are known |
+
+An exact SKU/UFID match is decisive in the same way as an exact ASIN or ISBN match. SKU evidence is read from normalized `identifiers.other.sku`, `skuGroup`, or `ufid` values.
+
+When the caller supplies a duration, providers still discover candidates normally and the CLI compares durations locally. Differences inside `--duration-tolerance` receive full duration evidence; larger differences decay with distance. A provider that omits duration is not assigned false conflicting evidence, but a known in-tolerance edition wins the duration tie-break. `--explain` reports the absolute difference and whether it was inside tolerance.
 
 When an identifier matches exactly, textual differences should not normally demote the candidate below non-identifier matches, but conflicting identifiers MUST be surfaced.
 
@@ -165,6 +170,7 @@ Do not expose secrets, full signed URLs, or sensitive headers.
 ## 9. Provider-specific incomplete-search notes
 
 - **Libex**: documented quick-search/suggestion endpoint is preferred for partial input.
+- **Libex SKU and fallback**: `--sku`/`--ufid` uses `/book/sku/{sku}`. If ordinary search yields no candidates and an author was supplied, `/author/books` is used as a local-ranking fallback.
 - **AudioSilo Meta**: native FTS supports whole words and word prefixes, not arbitrary mid-word substring matching.
 - **abs-storytel-provider**: repository documents author relevance ranking and retry without author when combined search yields no results.
 - **abs-agg**: search behavior differs by subprovider; the CLI should use local reranking consistently.

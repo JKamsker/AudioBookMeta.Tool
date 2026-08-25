@@ -15,7 +15,7 @@ public sealed class AudioSiloProvider(ProviderConfig config, ProviderTransport t
     public string AdapterType => "audiosilo";
     public ProviderCapabilities Capabilities { get; } = CapabilityCatalog.Create(config,
         "search", "free_text_query", "title_filter", "author_filter", "series_filter", "isbn_filter", "asin_filter",
-        "quick_search", "get_by_id", "chapters", "author_search", "series_search", "native_pagination", "health");
+        "quick_search", "duration_metadata", "get_by_id", "chapters", "author_search", "series_search", "native_pagination", "health");
 
     public async Task<ProviderSearchResponse> SearchAsync(SearchRequest request, bool includeRaw, CancellationToken cancellationToken)
     {
@@ -29,7 +29,7 @@ public sealed class AudioSiloProvider(ProviderConfig config, ProviderTransport t
         if (!string.IsNullOrWhiteSpace(request.Asin) || !string.IsNullOrWhiteSpace(request.Isbn))
             return await IdentifierSearchRawAsync(request, cancellationToken);
 
-        var text = request.Query ?? string.Join(' ', new[] { request.Title, request.Author, request.Series, request.Narrator }.Where(value => !string.IsNullOrWhiteSpace(value)));
+        var text = SearchText(request);
         var uri = ProviderTransport.BuildUri(config.BaseUrl, "api/v1/search",
         [
             new("q", text), new("limit", Math.Min(request.LimitPerProvider, 100).ToString())
@@ -39,12 +39,17 @@ public sealed class AudioSiloProvider(ProviderConfig config, ProviderTransport t
         if (!document.RootElement.TryGetProperty("results", out var results) || results.ValueKind != JsonValueKind.Array)
             throw new ProviderException(Id, "invalid_response", "AudioSilo search response is missing a results array");
         var candidates = results.EnumerateArray().Where(item => JsonFields.String(item, "kind") == "work")
-            .Select(item => ParseWorkCard(item, true)).Where(item => item is not null).Select(item => item!).ToList();
-        if (!request.Editions)
-            return new ProviderSearchResponse { Candidates = candidates, RequestCount = 1 };
+            .Select(item => ParseWorkCard(item, true)).Where(item => item is not null).Select(item => item! with { LookupStrategy = "search" }).ToList();
+        if (!NeedsEditionMetadata(request))
+            return new ProviderSearchResponse { Candidates = candidates, RequestCount = 1, LookupStrategies = ["search"] };
         var workIds = candidates.Select(WorkId).Where(id => id is not null).Select(id => id!).ToList();
         var editions = await AudioSiloEditionExpander.ExpandAsync(workIds, GetWorkEditionsRawAsync, cancellationToken);
-        return new ProviderSearchResponse { Candidates = editions, RequestCount = 1 + workIds.Count };
+        return new ProviderSearchResponse
+        {
+            Candidates = editions.Select(result => result with { LookupStrategy = "edition_expansion" }).ToList(),
+            RequestCount = 1 + workIds.Count,
+            LookupStrategies = ["search", "edition_expansion"]
+        };
     }
 
     public async Task<SearchResult> GetAsync(string id, string? region, bool includeRaw, CancellationToken cancellationToken)
@@ -83,7 +88,12 @@ public sealed class AudioSiloProvider(ProviderConfig config, ProviderTransport t
             try
             {
                 var result = await LookupTypedAsync(request.Asin is not null ? "asin" : "isbn", request.Asin ?? request.Isbn!, cancellationToken);
-                return new ProviderSearchResponse { Candidates = [result], RequestCount = 2 };
+                return new ProviderSearchResponse
+                {
+                    Candidates = [result with { LookupStrategy = request.Asin is not null ? "asin" : "isbn" }],
+                    RequestCount = 2,
+                    LookupStrategies = [request.Asin is not null ? "asin" : "isbn"]
+                };
             }
             catch (ProviderException exception) when (exception.StatusCode == (int)HttpStatusCode.NotFound)
             {
@@ -91,19 +101,24 @@ public sealed class AudioSiloProvider(ProviderConfig config, ProviderTransport t
             }
         }
 
-        var text = request.Query ?? string.Join(' ', new[] { request.Title, request.Author, request.Series, request.Narrator }.Where(value => !string.IsNullOrWhiteSpace(value)));
+        var text = SearchText(request);
         var response = await KiotaInvoker.InvokeAsync(Id, () => client.Api.V1.Search.GetAsync(options =>
         {
             options.QueryParameters.Q = text;
             options.QueryParameters.Limit = Math.Min(request.LimitPerProvider, 100);
         }, cancellationToken), cancellationToken);
         var works = response?.Results?.Select(result => result.WorkResult).Where(work => work is not null).Select(work => work!).ToList() ?? [];
-        var candidates = works.Select(mapper.MapCard).Where(result => result is not null).Select(result => result!).ToList();
-        if (!request.Editions)
-            return new ProviderSearchResponse { Candidates = candidates, RequestCount = 1 };
+        var candidates = works.Select(mapper.MapCard).Where(result => result is not null).Select(result => result! with { LookupStrategy = "search" }).ToList();
+        if (!NeedsEditionMetadata(request))
+            return new ProviderSearchResponse { Candidates = candidates, RequestCount = 1, LookupStrategies = ["search"] };
         var workIds = works.Select(work => work.Id).Where(id => !string.IsNullOrWhiteSpace(id)).Select(id => id!).ToList();
         var editions = await AudioSiloEditionExpander.ExpandAsync(workIds, GetWorkEditionsTypedAsync, cancellationToken);
-        return new ProviderSearchResponse { Candidates = editions, RequestCount = 1 + workIds.Count };
+        return new ProviderSearchResponse
+        {
+            Candidates = editions.Select(result => result with { LookupStrategy = "edition_expansion" }).ToList(),
+            RequestCount = 1 + workIds.Count,
+            LookupStrategies = ["search", "edition_expansion"]
+        };
     }
 
     private async Task<SearchResult> GetTypedAsync(string id, CancellationToken cancellationToken)
@@ -151,7 +166,12 @@ public sealed class AudioSiloProvider(ProviderConfig config, ProviderTransport t
         try
         {
             var result = await LookupRawAsync(request.Asin is not null ? "asin" : "isbn", request.Asin ?? request.Isbn!, true, cancellationToken);
-            return new ProviderSearchResponse { Candidates = [result], RequestCount = 2 };
+            return new ProviderSearchResponse
+            {
+                Candidates = [result with { LookupStrategy = request.Asin is not null ? "asin" : "isbn" }],
+                RequestCount = 2,
+                LookupStrategies = [request.Asin is not null ? "asin" : "isbn"]
+            };
         }
         catch (ProviderException exception) when (exception.StatusCode == (int)HttpStatusCode.NotFound)
         {
@@ -271,4 +291,14 @@ public sealed class AudioSiloProvider(ProviderConfig config, ProviderTransport t
         try { return JsonDocument.Parse(content, new JsonDocumentOptions { MaxDepth = 64 }); }
         catch (JsonException exception) { throw new ProviderException(Id, "invalid_response", "AudioSilo returned invalid JSON", inner: exception); }
     }
+
+    private static bool NeedsEditionMetadata(SearchRequest request)
+        => request.Editions || request.DurationSeconds is not null
+            || !string.IsNullOrWhiteSpace(request.Publisher) || !string.IsNullOrWhiteSpace(request.Narrator);
+
+    private static string SearchText(SearchRequest request)
+        => request.Query ?? string.Join(' ', new[]
+        {
+            request.Title, request.Author, request.Series, request.Narrator, request.Publisher, request.Sku
+        }.Where(value => !string.IsNullOrWhiteSpace(value)));
 }

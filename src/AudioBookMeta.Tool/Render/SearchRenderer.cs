@@ -54,6 +54,8 @@ public sealed class SearchRenderer(AppConsole console, ResultClusterer clusterer
             foreach (var result in response.Results)
             {
                 console.Out.MarkupLine($"[grey]{AppConsole.Safe(result.Provider)} {AppConsole.Safe(result.Title)}[/]");
+                if (result.LookupStrategy is not null)
+                    console.Out.MarkupLine($"  [grey]lookup strategy: {AppConsole.Safe(result.LookupStrategy)}[/]");
                 foreach (var evidence in result.ScoreEvidence)
                     console.Out.MarkupLine($"  [grey]{AppConsole.Safe(evidence.Key)}: {AppConsole.Safe(evidence.Value)}[/]");
                 console.Out.MarkupLine($"  [grey]cluster: {AppConsole.Safe(result.WorkClusterId)} / {AppConsole.Safe(result.EditionClusterId)}[/]");

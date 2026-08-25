@@ -6,7 +6,7 @@ dotnet kiota generate \
   -d docs/tasks/initial/bookmeta-cli-spec/sources/libexdb-openapi.json \
   -l CSharp -o src/AudioBookMeta.Tool/Generated/Libex \
   -n AudiobookMeta.Tool.Generated.Libex -c LibexApiClient --tam Internal --ebc --co \
-  -i '/search' -i '/quick-search' -i '/book/{asin}' -i '/health'
+  -i '/search' -i '/quick-search' -i '/book/{asin}' -i '/book/sku/{sku}' -i '/health'
 
 dotnet kiota generate \
   -d https://meta.audiosilo.app/api/v1/openapi.json \

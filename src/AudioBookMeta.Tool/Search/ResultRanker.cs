@@ -9,22 +9,31 @@ public sealed class ResultRanker
         var results = candidates.ToList();
         foreach (var candidate in results)
             Score(request, candidate);
-        return results.OrderByDescending(result => result.Score).ThenBy(result => result.Provider, StringComparer.OrdinalIgnoreCase).ToList();
+        return results.OrderByDescending(result => result.Score)
+            .ThenBy(result => DurationOrder(request, result))
+            .ThenBy(result => result.Provider, StringComparer.OrdinalIgnoreCase).ToList();
     }
 
     private static void Score(SearchRequest request, SearchResult result)
     {
         var requestedAsin = TextNormalizer.Identifier(request.Asin);
         var requestedIsbn = TextNormalizer.Identifier(request.Isbn);
+        var requestedSku = TextNormalizer.Identifier(request.Sku);
         var asins = result.Identifiers.Asin.Select(TextNormalizer.Identifier).ToList();
         var isbns = result.Identifiers.Isbn10.Concat(result.Identifiers.Isbn13).Select(TextNormalizer.Identifier).ToList();
-        var identifierMatch = requestedAsin.Length > 0 && asins.Contains(requestedAsin) || requestedIsbn.Length > 0 && isbns.Contains(requestedIsbn);
-        var identifierConflict = requestedAsin.Length > 0 && asins.Count > 0 && !asins.Contains(requestedAsin) || requestedIsbn.Length > 0 && isbns.Count > 0 && !isbns.Contains(requestedIsbn);
+        var skus = IdentifierValues(result.Identifiers.Other, "sku", "skuGroup", "ufid").Select(TextNormalizer.Identifier).Where(value => value.Length > 0).ToList();
+        var identifierMatch = requestedAsin.Length > 0 && asins.Contains(requestedAsin)
+            || requestedIsbn.Length > 0 && isbns.Contains(requestedIsbn)
+            || requestedSku.Length > 0 && skus.Contains(requestedSku);
+        var identifierConflict = requestedAsin.Length > 0 && asins.Count > 0 && !asins.Contains(requestedAsin)
+            || requestedIsbn.Length > 0 && isbns.Count > 0 && !isbns.Contains(requestedIsbn)
+            || requestedSku.Length > 0 && skus.Count > 0 && !skus.Contains(requestedSku);
         if (identifierMatch)
         {
             result.Score = 100;
             result.Confidence = "exact";
-            result.ScoreEvidence["identifier"] = "exact match";
+            result.ScoreEvidence["identifier"] = requestedSku.Length > 0 && skus.Contains(requestedSku) ? "exact SKU/UFID match" : "exact match";
+            AddDurationEvidence(request, result);
             return;
         }
 
@@ -35,19 +44,26 @@ public sealed class ResultRanker
             ("author", request.Author, string.Join(' ', result.Authors), 20),
             ("series", request.Series, string.Join(' ', result.Series.Select(series => series.Name)), 8),
             ("narrator", request.Narrator, string.Join(' ', result.Narrators), 7),
+            ("publisher", request.Publisher, result.Publisher ?? string.Empty, 5),
             ("language", request.Language, result.Language ?? string.Empty, 5)
         };
+        if (request.DurationSeconds is not null && result.DurationSeconds is not null)
+            fields.Add(("duration", "duration", DurationSimilarity(request, result).ToString(System.Globalization.CultureInfo.InvariantCulture), 25));
         var applicable = fields.Where(field => !string.IsNullOrWhiteSpace(field.Query) && (field.Name == "title" || !string.IsNullOrWhiteSpace(field.Candidate))).ToList();
         var denominator = applicable.Sum(field => field.Weight);
         var weighted = 0d;
         foreach (var field in applicable)
         {
-            var similarity = TextSimilarity.Score(field.Query, field.Candidate, request.Exact);
+            var similarity = field.Name == "duration"
+                ? double.Parse(field.Candidate, System.Globalization.CultureInfo.InvariantCulture)
+                : TextSimilarity.Score(field.Query, field.Candidate, request.Exact);
             weighted += similarity * field.Weight;
-            result.ScoreEvidence[field.Name] = $"{similarity:0.00}";
+            if (field.Name != "duration")
+                result.ScoreEvidence[field.Name] = $"{similarity:0.00}";
         }
+        AddDurationEvidence(request, result);
         result.Score = denominator == 0 ? 0 : Math.Round(weighted / denominator * 100, 1);
-        var identifierRequested = requestedAsin.Length > 0 || requestedIsbn.Length > 0;
+        var identifierRequested = requestedAsin.Length > 0 || requestedIsbn.Length > 0 || requestedSku.Length > 0;
         if (identifierRequested)
             result.Score = Math.Min(result.Score, 95);
         if (identifierConflict)
@@ -66,5 +82,54 @@ public sealed class ResultRanker
         var titleScore = TextSimilarity.Score(titleQuery, result.Title, request.Exact);
         if (request.Author is not null && authorScore < .45 && titleScore >= .8)
             result.Warnings.Add("title is plausible but supplied author evidence is weak");
+    }
+
+    private static double DurationSimilarity(SearchRequest request, SearchResult result)
+    {
+        if (request.DurationSeconds is not { } requested || result.DurationSeconds is not { } actual)
+            return 0;
+        var difference = Math.Abs(requested - actual);
+        var tolerance = Math.Max(1, request.DurationToleranceSeconds);
+        if (difference <= tolerance)
+            return 1;
+        var decayWindow = Math.Max(tolerance * 4d, requested * .1d);
+        return Math.Max(0, 1 - (difference - tolerance) / decayWindow);
+    }
+
+    private static long DurationOrder(SearchRequest request, SearchResult result)
+        => request.DurationSeconds is { } requested && result.DurationSeconds is { } actual
+            ? Math.Abs(requested - actual)
+            : long.MaxValue;
+
+    private static void AddDurationEvidence(SearchRequest request, SearchResult result)
+    {
+        if (request.DurationSeconds is not { } requested)
+            return;
+        if (result.DurationSeconds is not { } actual)
+        {
+            result.ScoreEvidence["duration"] = "not supplied by provider";
+            return;
+        }
+        var difference = Math.Abs(requested - actual);
+        var inside = difference <= request.DurationToleranceSeconds;
+        result.ScoreEvidence["duration"] = $"{difference}s difference; {(inside ? "inside" : "outside")} {request.DurationToleranceSeconds}s tolerance";
+    }
+
+    private static IEnumerable<string> IdentifierValues(Dictionary<string, object> other, params string[] names)
+    {
+        foreach (var (key, value) in other)
+        {
+            if (!names.Contains(key, StringComparer.OrdinalIgnoreCase))
+                continue;
+            if (value is string text)
+                yield return text;
+            else if (value is IEnumerable<string> values)
+                foreach (var item in values) yield return item;
+            else if (value is System.Text.Json.JsonElement element && element.ValueKind == System.Text.Json.JsonValueKind.String)
+                yield return element.GetString()!;
+            else if (value is System.Text.Json.JsonElement array && array.ValueKind == System.Text.Json.JsonValueKind.Array)
+                foreach (var item in array.EnumerateArray())
+                    if (item.ValueKind == System.Text.Json.JsonValueKind.String) yield return item.GetString()!;
+        }
     }
 }
