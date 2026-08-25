@@ -30,7 +30,7 @@ Optional search parameters include:
 - `limit` (1–50, default 10)
 - `page` (0–9)
 - `cache`
-- `region` (default `us`)
+- `region` (CLI default `de`; Libex itself defaults to `us` when omitted)
 
 ### ABS compatibility
 

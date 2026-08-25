@@ -88,7 +88,7 @@ cache_ttl = "15m"
 type = "libex"
 base_url = "https://libexdb.com"
 enabled = true
-region = "us"
+region = "de"
 priority = 100
 groups = ["default", "audiobook"]
 
@@ -133,7 +133,7 @@ Durations accept `ms`, `s`, `m`, and `h`, for example `500ms`, `10s`, or `1m`.
 
 ### Libex
 
-Libex supplies Audible-oriented metadata and supports broad search, quick suggestions, structured filters, native paging, SKU/UFID and ASIN lookup, and dedicated author-book lookup. The generated configuration gives Libex a 10-second provider timeout because a cold SKU database lookup can exceed the four-second general default.
+Libex supplies Audible-oriented metadata and supports broad search, quick suggestions, structured filters, native paging, SKU/UFID and ASIN lookup, and dedicated author-book lookup. The shipped configuration targets the German Audible marketplace (`de`) and gives Libex a 10-second provider timeout because a cold SKU database lookup can exceed the four-second general default.
 
 ```toml
 [providers.libex]
@@ -141,7 +141,7 @@ type = "libex"
 base_url = "https://libexdb.com"
 enabled = true
 timeout = "10s"
-region = "us"
+region = "de"
 ```
 
 ### AudioSilo
