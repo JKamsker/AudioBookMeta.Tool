@@ -132,6 +132,7 @@ public sealed class CliContractTests
         var content = await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken);
         Assert.Contains("default_group = \"default\"", content, StringComparison.Ordinal);
         Assert.Contains("default = [\"libex\"]", content, StringComparison.Ordinal);
+        Assert.Contains("timeout = \"10s\"", content, StringComparison.Ordinal);
         Assert.Contains("shop-links = [\"lismio\"]", content, StringComparison.Ordinal);
     }
 

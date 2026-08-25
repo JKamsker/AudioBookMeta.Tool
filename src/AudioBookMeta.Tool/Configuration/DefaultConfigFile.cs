@@ -20,6 +20,7 @@ public static class DefaultConfigFile
         type = "libex"
         base_url = "https://libexdb.com"
         enabled = true
+        timeout = "10s"
         region = "us"
         priority = 100
         groups = ["default", "audiobook"]

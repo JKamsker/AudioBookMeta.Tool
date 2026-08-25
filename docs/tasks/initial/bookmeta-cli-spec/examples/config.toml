@@ -13,6 +13,7 @@ cache_ttl = "15m"
 type = "libex"
 base_url = "https://libexdb.com"
 enabled = true
+timeout = "10s"
 region = "us"
 priority = 100
 groups = ["default", "audiobook"]
