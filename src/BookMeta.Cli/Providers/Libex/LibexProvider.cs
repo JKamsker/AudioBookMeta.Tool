@@ -5,7 +5,8 @@ using BookMeta.Model;
 
 namespace BookMeta.Providers.Libex;
 
-public sealed class LibexProvider(ProviderConfig config, ProviderTransport transport, KiotaClientFactory kiota) : IMetadataProvider
+public sealed class LibexProvider(ProviderConfig config, ProviderTransport transport, KiotaClientFactory kiota)
+    : IMetadataProvider, IAuthorBooksProvider
 {
     private readonly BookMeta.Generated.Libex.LibexApiClient client = kiota.CreateLibex(config);
     private readonly LibexModelMapper mapper = new(config.Id);
@@ -26,14 +27,14 @@ public sealed class LibexProvider(ProviderConfig config, ProviderTransport trans
     {
         if (!string.IsNullOrWhiteSpace(request.Asin))
         {
-            var result = await GetRawAsync(request.Asin, cancellationToken);
+            var result = await GetRawAsync(request.Asin, request.Region, cancellationToken);
             return new ProviderSearchResponse { Candidates = [result], RequestCount = 1 };
         }
 
         var candidates = new List<SearchResult>();
         var requestCount = 0;
         var text = request.Query ?? request.Title;
-        if (!request.Exact && !string.IsNullOrWhiteSpace(text))
+        if (request.Page is null && !request.Exact && !string.IsNullOrWhiteSpace(text))
         {
             var quickUri = ProviderTransport.BuildUri(config.BaseUrl, "quick-search",
             [
@@ -49,8 +50,8 @@ public sealed class LibexProvider(ProviderConfig config, ProviderTransport trans
             var uri = ProviderTransport.BuildUri(config.BaseUrl, "search",
             [
                 new("title", request.Title), new("author", request.Author), new("narrator", request.Narrator),
-                new("query", request.Query), new("keywords", request.Query), new("limit", Math.Min(request.LimitPerProvider, 50).ToString()),
-                new("page", "0"), new("cache", "false"), new("region", request.Region ?? config.Region)
+                new("query", request.Query), new("keywords", request.Query), new("limit", Math.Min(request.LimitPerProvider, LibexDefaults.MaximumSearchLimit).ToString()),
+                new("page", (request.Page ?? LibexDefaults.DefaultSearchPage).ToString()), new("cache", "false"), new("region", request.Region ?? config.Region)
             ]);
             var search = await transport.GetAsync(config, uri, cancellationToken);
             candidates.AddRange(ParseBooks(search.Content, true));
@@ -67,19 +68,41 @@ public sealed class LibexProvider(ProviderConfig config, ProviderTransport trans
         return new ProviderSearchResponse { Candidates = unique, RequestCount = requestCount, Warnings = warnings };
     }
 
-    public async Task<SearchResult> GetAsync(string id, bool includeRaw, CancellationToken cancellationToken)
+    public async Task<SearchResult> GetAsync(string id, string? region, bool includeRaw, CancellationToken cancellationToken)
     {
+        id = LibexAsin.Normalize(id);
         if (!includeRaw)
         {
-            var book = await KiotaInvoker.InvokeAsync(Id, () => client.Book[id].GetAsync(cancellationToken: cancellationToken), cancellationToken);
+            var book = await KiotaInvoker.InvokeAsync(Id, () => client.Book[id].GetAsync(options =>
+            {
+                options.QueryParameters.Region = region ?? config.Region;
+            }, cancellationToken), cancellationToken);
             return book is null || mapper.Map(book) is not { } mapped ? throw new ProviderException(Id, "invalid_response", "Libex book response has no title") : mapped;
         }
-        return await GetRawAsync(id, cancellationToken);
+        return await GetRawAsync(id, region, cancellationToken);
     }
 
-    private async Task<SearchResult> GetRawAsync(string id, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<SearchResult>> GetByAuthorAsync(
+        string author,
+        string? region,
+        bool includeRaw,
+        CancellationToken cancellationToken)
     {
-        var uri = ProviderTransport.BuildUri(config.BaseUrl, $"book/{Uri.EscapeDataString(id)}", []);
+        var uri = ProviderTransport.BuildUri(config.BaseUrl, "author/books",
+        [
+            new("name", author),
+            new("region", region ?? config.Region)
+        ]);
+        var response = await transport.GetAsync(config, uri, cancellationToken);
+        return ParseBooks(response.Content, includeRaw);
+    }
+
+    private async Task<SearchResult> GetRawAsync(string id, string? region, CancellationToken cancellationToken)
+    {
+        var uri = ProviderTransport.BuildUri(config.BaseUrl, $"book/{Uri.EscapeDataString(id)}",
+        [
+            new("region", region ?? config.Region)
+        ]);
         var response = await transport.GetAsync(config, uri, cancellationToken);
         using var document = ParseDocument(response.Content);
         var result = ParseBook(document.RootElement, true);
@@ -104,14 +127,14 @@ public sealed class LibexProvider(ProviderConfig config, ProviderTransport trans
     {
         if (!string.IsNullOrWhiteSpace(request.Asin))
         {
-            var result = await GetAsync(request.Asin, false, cancellationToken);
+            var result = await GetAsync(request.Asin, request.Region, false, cancellationToken);
             return new ProviderSearchResponse { Candidates = [result], RequestCount = 1 };
         }
 
         var books = new List<BookMeta.Generated.Libex.Models.BookResponse>();
         var requestCount = 0;
         var text = request.Query ?? request.Title;
-        if (!request.Exact && !string.IsNullOrWhiteSpace(text))
+        if (request.Page is null && !request.Exact && !string.IsNullOrWhiteSpace(text))
         {
             var quick = await KiotaInvoker.InvokeAsync(Id, () => client.QuickSearch.GetAsync(options =>
             {
@@ -130,8 +153,8 @@ public sealed class LibexProvider(ProviderConfig config, ProviderTransport trans
                 options.QueryParameters.Narrator = request.Narrator;
                 options.QueryParameters.Query = request.Query;
                 options.QueryParameters.Keywords = request.Query;
-                options.QueryParameters.Limit = Math.Min(request.LimitPerProvider, 50);
-                options.QueryParameters.Page = 0;
+                options.QueryParameters.Limit = Math.Min(request.LimitPerProvider, LibexDefaults.MaximumSearchLimit);
+                options.QueryParameters.Page = request.Page ?? LibexDefaults.DefaultSearchPage;
                 options.QueryParameters.Cache = false;
                 options.QueryParameters.Region = request.Region ?? config.Region;
             }, cancellationToken), cancellationToken);
@@ -178,6 +201,13 @@ public sealed class LibexProvider(ProviderConfig config, ProviderTransport trans
             ReleaseDate = releaseDate,
             Language = JsonFields.String(item, "language"),
             DurationSeconds = JsonFields.Integer(item, "lengthMinutes") is { } minutes ? minutes * 60 : null,
+            Rating = JsonFields.Number(item, "rating"),
+            Format = JsonFields.String(item, "bookFormat"),
+            Regions = Regions(item),
+            IsAvailable = JsonFields.Boolean(item, "isAvailable"),
+            IsBuyable = JsonFields.Boolean(item, "isBuyable"),
+            IsListenable = JsonFields.Boolean(item, "isListenable"),
+            IsVirtualVoice = JsonFields.Boolean(item, "isVvab"),
             Genres = JsonFields.Strings(item, "genres"),
             CoverUrl = JsonFields.String(item, "imageUrl"),
             Description = JsonFields.String(item, "description", "summary"),
@@ -193,6 +223,17 @@ public sealed class LibexProvider(ProviderConfig config, ProviderTransport trans
             if (JsonFields.String(item, name) is { } value)
                 result[name] = value;
         return result;
+    }
+
+    private static List<string> Regions(JsonElement item)
+    {
+        var regions = JsonFields.Strings(item, "regions");
+        if (JsonFields.String(item, "region") is { } region)
+        {
+            regions.RemoveAll(value => value.Equals(region, StringComparison.OrdinalIgnoreCase));
+            regions.Insert(0, region);
+        }
+        return regions;
     }
 
     private JsonDocument ParseDocument(byte[] content)

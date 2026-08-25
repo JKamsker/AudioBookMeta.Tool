@@ -1,6 +1,7 @@
 using System.Net;
 using BookMeta.Commands;
 using BookMeta.Commands.Config;
+using BookMeta.Commands.Author;
 using BookMeta.Commands.Providers;
 using BookMeta.Common;
 using BookMeta.Configuration;
@@ -32,6 +33,7 @@ services.AddSingleton<ResultRanker>();
 services.AddSingleton<ResultClusterer>();
 services.AddSingleton<SearchEngine>();
 services.AddSingleton<SearchRenderer>();
+services.AddSingleton<AudiobookRenderer>();
 services.AddSingleton<DiagnosticLogger>();
 services.AddHttpClient("provider", client => client.Timeout = Timeout.InfiniteTimeSpan)
     .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
@@ -54,6 +56,13 @@ app.Configure(config =>
     config.AddCommand<GetCommand>("get")
         .WithDescription("Retrieve a native provider record by PROVIDER:ID.")
         .WithExample("get", "libex:B00B7NPRY8");
+    config.AddBranch("author", author =>
+    {
+        author.SetDescription("Find audiobook metadata through provider-native author lookup.");
+        author.AddCommand<AuthorBooksCommand>("books")
+            .WithDescription("List all audiobooks returned for an author by Libex.")
+            .WithExample("author", "books", "Andy Weir", "--provider", "libex");
+    });
     config.AddBranch("providers", providers =>
     {
         providers.SetDescription("Inspect providers, capabilities, and connectivity without exposing secrets.");

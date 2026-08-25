@@ -1,7 +1,9 @@
 using System.ComponentModel;
 using BookMeta.Common;
 using BookMeta.Configuration;
+using BookMeta.Model;
 using BookMeta.Providers;
+using BookMeta.Render;
 using BookMeta.Search;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -15,6 +17,9 @@ public sealed class GetSettings : GlobalSettings
     public required string Reference { get; init; }
     [CommandOption("--raw")]
     public bool Raw { get; init; }
+    [CommandOption("--region <CODE>")]
+    [Description("Audible region code; overrides the selected provider's configured region.")]
+    public string? Region { get; init; }
 
     public override ValidationResult Validate()
     {
@@ -25,7 +30,7 @@ public sealed class GetSettings : GlobalSettings
     }
 }
 
-public sealed class GetCommand(ConfigLoader loader, ProviderFactory factory, ResultClusterer clusterer, AppConsole console)
+public sealed class GetCommand(ConfigLoader loader, ProviderFactory factory, ResultClusterer clusterer, AudiobookRenderer renderer, AppConsole console)
     : AsyncCommand<GetSettings>
 {
     protected override async Task<int> ExecuteAsync(CommandContext context, GetSettings settings, CancellationToken cancellationToken)
@@ -39,9 +44,13 @@ public sealed class GetCommand(ConfigLoader loader, ProviderFactory factory, Res
         if (!provider.Enabled)
             throw new BookMetaException($"Provider '{providerId}' is disabled.", ExitCodes.Configuration, "Enable it before using get.");
 
+        var adapter = factory.Create(provider);
+        if (settings.Region is not null && adapter.Capabilities["region_filter"] != CapabilityState.Supported)
+            throw new BookMetaException($"Provider '{providerId}' does not support region selection.", ExitCodes.UnsupportedCapability, "Remove --region or select a Libex provider.");
+
         using var timeout = new CancellationTokenSource(provider.Timeout ?? config.Search.ProviderTimeout);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token, cancellationToken);
-        var result = await factory.Create(provider).GetAsync(recordId, settings.Raw, linked.Token);
+        var result = await adapter.GetAsync(recordId, settings.Region ?? provider.Region, settings.Raw, linked.Token);
         result.Score = 100;
         result.Confidence = "exact";
         clusterer.AssignClusters([result], false);
@@ -50,12 +59,7 @@ public sealed class GetCommand(ConfigLoader loader, ProviderFactory factory, Res
         else if (settings.Quiet)
             console.Out.WriteLine(result.ProviderRecordId ?? settings.Reference);
         else
-        {
-            console.Out.MarkupLine($"[bold]{AppConsole.Safe(result.Title)}[/]");
-            console.Out.MarkupLine($"Author: {AppConsole.Safe(string.Join(", ", result.Authors))}");
-            console.Out.MarkupLine($"Narrator: {AppConsole.Safe(string.Join(", ", result.Narrators))}");
-            console.Out.MarkupLine($"Provider ID: {AppConsole.Safe(result.ProviderRecordId)}");
-        }
+            renderer.RenderDetails(result);
         return ExitCodes.Success;
     }
 }

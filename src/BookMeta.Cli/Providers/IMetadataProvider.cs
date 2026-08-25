@@ -8,6 +8,15 @@ public interface IMetadataProvider
     string AdapterType { get; }
     ProviderCapabilities Capabilities { get; }
     Task<ProviderSearchResponse> SearchAsync(SearchRequest request, bool includeRaw, CancellationToken cancellationToken);
-    Task<SearchResult> GetAsync(string id, bool includeRaw, CancellationToken cancellationToken);
+    Task<SearchResult> GetAsync(string id, string? region, bool includeRaw, CancellationToken cancellationToken);
     Task<ProviderTestResult> TestAsync(CancellationToken cancellationToken);
+}
+
+public interface IAuthorBooksProvider
+{
+    Task<IReadOnlyList<SearchResult>> GetByAuthorAsync(
+        string author,
+        string? region,
+        bool includeRaw,
+        CancellationToken cancellationToken);
 }

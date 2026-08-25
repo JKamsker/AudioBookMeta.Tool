@@ -47,7 +47,7 @@ public sealed class AudioSiloProvider(ProviderConfig config, ProviderTransport t
         return new ProviderSearchResponse { Candidates = editions, RequestCount = 1 + workIds.Count };
     }
 
-    public async Task<SearchResult> GetAsync(string id, bool includeRaw, CancellationToken cancellationToken)
+    public async Task<SearchResult> GetAsync(string id, string? region, bool includeRaw, CancellationToken cancellationToken)
     {
         if (!includeRaw)
             return await GetTypedAsync(id, cancellationToken);

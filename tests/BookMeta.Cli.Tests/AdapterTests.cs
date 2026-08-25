@@ -45,6 +45,78 @@ public sealed class AdapterTests
     }
 
     [Fact]
+    public async Task Libex_native_page_bypasses_quick_search_and_forwards_page()
+    {
+        var requests = 0;
+        var factory = new TestHttpFactory((request, _) =>
+        {
+            requests++;
+            Assert.Equal("/search", request.RequestUri!.AbsolutePath);
+            Assert.Contains("page=3", request.RequestUri.Query, StringComparison.Ordinal);
+            Assert.Contains("limit=7", request.RequestUri.Query, StringComparison.Ordinal);
+            return Task.FromResult(TestHttpFactory.Json("[]"));
+        });
+        var config = Config("libex");
+        var provider = new LibexProvider(config, new ProviderTransport(factory), new KiotaClientFactory(factory));
+
+        await provider.SearchAsync(
+            new SearchRequest { Query = "dune", LimitPerProvider = 7, Page = 3 },
+            false,
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, requests);
+    }
+
+    [Fact]
+    public async Task Libex_author_books_uses_native_endpoint_and_normalizes_details()
+    {
+        var factory = new TestHttpFactory((request, _) =>
+        {
+            Assert.Equal("/author/books", request.RequestUri!.AbsolutePath);
+            Assert.Contains("name=Andy%20Weir", request.RequestUri.Query, StringComparison.Ordinal);
+            Assert.Contains("region=uk", request.RequestUri.Query, StringComparison.Ordinal);
+            return Task.FromResult(TestHttpFactory.Json("""
+                [{"asin":"B08G9PRS1K","title":"Project Hail Mary","region":"uk","regions":["us","uk"],
+                  "rating":4.75,"bookFormat":"audiobook","isAvailable":true,"isBuyable":false,
+                  "isListenable":true,"isVvab":false,"authors":[{"name":"Andy Weir"}]}]
+                """));
+        });
+        var config = Config("libex");
+        var provider = new LibexProvider(config, new ProviderTransport(factory), new KiotaClientFactory(factory));
+
+        var books = await provider.GetByAuthorAsync("Andy Weir", "uk", false, TestContext.Current.CancellationToken);
+
+        var book = Assert.Single(books);
+        Assert.Equal(4.75, book.Rating);
+        Assert.Equal("audiobook", book.Format);
+        Assert.Equal(["uk", "us"], book.Regions);
+        Assert.True(book.IsAvailable);
+        Assert.False(book.IsBuyable);
+        Assert.True(book.IsListenable);
+        Assert.False(book.IsVirtualVoice);
+    }
+
+    [Fact]
+    public async Task Libex_get_validates_and_normalizes_asin_before_request()
+    {
+        var factory = new TestHttpFactory((request, _) =>
+        {
+            Assert.Equal("/book/B08G9PRS1K", request.RequestUri!.AbsolutePath);
+            Assert.Contains("region=uk", request.RequestUri.Query, StringComparison.Ordinal);
+            return Task.FromResult(TestHttpFactory.Json("""{"asin":"B08G9PRS1K","title":"Project Hail Mary"}"""));
+        });
+        var config = Config("libex");
+        var provider = new LibexProvider(config, new ProviderTransport(factory), new KiotaClientFactory(factory));
+
+        var result = await provider.GetAsync("b08g9prs1k", "uk", false, TestContext.Current.CancellationToken);
+        Assert.Equal("B08G9PRS1K", result.ProviderRecordId);
+
+        var exception = await Assert.ThrowsAsync<BookMeta.Common.BookMetaException>(() =>
+            provider.GetAsync("too-short", "uk", false, TestContext.Current.CancellationToken));
+        Assert.Equal(BookMeta.Common.ExitCodes.Usage, exception.ExitCode);
+    }
+
+    [Fact]
     public async Task AudioSilo_kiota_client_filters_mixed_search_results()
     {
         var factory = new TestHttpFactory((request, _) => Task.FromResult(TestHttpFactory.Json("""

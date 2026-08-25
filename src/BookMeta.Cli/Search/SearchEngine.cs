@@ -20,6 +20,7 @@ public sealed class SearchEngine(
         var providers = selector.Select(config, options.Includes, options.Groups, options.Excludes);
         if (providers.Count == 0)
             throw new BookMetaException("No enabled providers were selected.", ExitCodes.Configuration, "Enable a provider or select a non-empty provider group.");
+        ValidateNativePagination(request, providers);
 
         var candidates = new ConcurrentBag<SearchResult>();
         var statuses = new ConcurrentBag<ProviderStatus>();
@@ -132,8 +133,27 @@ public sealed class SearchEngine(
         request.Asin,
         request.Language,
         request.Region,
+        request.Page,
         request.LimitPerProvider,
         request.Exact,
         Providers = providers
     };
+
+    private void ValidateNativePagination(SearchRequest request, IReadOnlyList<ProviderConfig> providers)
+    {
+        if (request.Page is null)
+            return;
+
+        var unsupported = providers
+            .Where(provider => factory.Create(provider).Capabilities["native_pagination"] != CapabilityState.Supported)
+            .Select(provider => provider.Id)
+            .ToList();
+        if (unsupported.Count == 0)
+            return;
+
+        throw new BookMetaException(
+            $"--page requires native pagination, which is not supported by: {string.Join(", ", unsupported)}.",
+            ExitCodes.UnsupportedCapability,
+            "Select only a provider with native pagination, for example '--provider libex'.");
+    }
 }

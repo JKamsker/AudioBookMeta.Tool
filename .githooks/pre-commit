@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+set -eu
+
+pwsh -NoProfile -File eng/check-source-length.ps1

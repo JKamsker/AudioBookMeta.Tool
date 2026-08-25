@@ -111,9 +111,23 @@ Search only selected providers:
 ```sh
 bookmeta search "Dune" -p libex -p audiosilo
 bookmeta search "Dune" --group audiobook
+bookmeta search "Dune" --provider libex --page 2
 ```
 
+`--page` selects a native zero-based provider page from 0 to 9. It refuses providers that cannot honor native pagination, so select only Libex when using it.
+
 Provider names and groups come from your configuration file. See the [configuration guide](docs/configuration.md) to add community or self-hosted Audiobookshelf-compatible providers.
+
+## List an author's Libex audiobooks
+
+Use Libex's dedicated author lookup when you want its complete author result set instead of a locally ranked free-text search:
+
+```sh
+bookmeta author books "Andy Weir"
+bookmeta author books "Andy Weir" --provider libex --region uk --json
+```
+
+When exactly one enabled Libex provider is configured, `--provider` is optional. Multiple enabled Libex instances require an explicit provider ID.
 
 ## Retrieve one result
 
@@ -121,8 +135,11 @@ When a result has a provider record ID, retrieve it directly with `PROVIDER:ID`:
 
 ```sh
 bookmeta get libex:B08G9PRS1K
+bookmeta get libex:B08G9PRS1K --region uk
 bookmeta get audiosilo:work/project-hail-mary
 ```
+
+Libex ASINs are normalized to uppercase and must contain exactly ten letters or digits. Human output includes authors, narrators, series, duration, release details, rating, availability, regions, links, and a cleaned description when Libex supplies them.
 
 Not every provider supports direct retrieval; generic Audiobookshelf-compatible providers are usually search-only.
 

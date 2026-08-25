@@ -82,7 +82,7 @@ Durations accept `ms`, `s`, `m`, and `h`, for example `500ms`, `10s`, or `1m`.
 
 ### Libex
 
-Libex supplies Audible-oriented metadata and supports broad search, quick suggestions, structured filters, and direct ASIN retrieval.
+Libex supplies Audible-oriented metadata and supports broad search, quick suggestions, structured filters, native paging, dedicated author-book lookup, and direct ASIN retrieval.
 
 ```toml
 [providers.libex]

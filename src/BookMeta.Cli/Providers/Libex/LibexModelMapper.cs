@@ -27,6 +27,13 @@ internal sealed class LibexModelMapper(string providerId)
             ReleaseDate = releaseDate,
             Language = PrimitiveString(item.Language),
             DurationSeconds = PrimitiveInteger(item.LengthMinutes) is { } minutes ? minutes * 60 : null,
+            Rating = PrimitiveDouble(item.Rating),
+            Format = PrimitiveString(item.BookFormat),
+            Regions = Regions(item),
+            IsAvailable = item.IsAvailable,
+            IsBuyable = item.IsBuyable,
+            IsListenable = item.IsListenable,
+            IsVirtualVoice = item.IsVvab,
             Genres = item.Genres?.Select(genre => PrimitiveString(genre.Name)).Where(value => !string.IsNullOrWhiteSpace(value)).Select(value => value!).ToList() ?? [],
             CoverUrl = PrimitiveString(item.ImageUrl),
             Description = PrimitiveString(item.Description) ?? PrimitiveString(item.Summary),
@@ -47,4 +54,18 @@ internal sealed class LibexModelMapper(string providerId)
 
     private static int? PrimitiveInteger(object? wrapper)
         => wrapper?.GetType().GetProperty("Integer")?.GetValue(wrapper) as int?;
+
+    private static double? PrimitiveDouble(object? wrapper)
+        => wrapper?.GetType().GetProperty("Double")?.GetValue(wrapper) as double?;
+
+    private static List<string> Regions(BookResponse item)
+    {
+        var regions = item.Regions?.Distinct(StringComparer.OrdinalIgnoreCase).ToList() ?? [];
+        if (!string.IsNullOrWhiteSpace(item.Region))
+        {
+            regions.RemoveAll(value => value.Equals(item.Region, StringComparison.OrdinalIgnoreCase));
+            regions.Insert(0, item.Region);
+        }
+        return regions;
+    }
 }

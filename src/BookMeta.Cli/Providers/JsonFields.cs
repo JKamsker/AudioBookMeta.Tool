@@ -27,6 +27,18 @@ internal static class JsonFields
         return long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) ? parsed : null;
     }
 
+    public static double? Number(JsonElement element, params string[] names)
+    {
+        var value = String(element, names);
+        return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) ? parsed : null;
+    }
+
+    public static bool? Boolean(JsonElement element, params string[] names)
+    {
+        var value = String(element, names);
+        return bool.TryParse(value, out var parsed) ? parsed : null;
+    }
+
     public static List<string> Strings(JsonElement element, params string[] names)
     {
         foreach (var name in names)

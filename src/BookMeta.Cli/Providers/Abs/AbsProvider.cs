@@ -39,7 +39,7 @@ public sealed class AbsProvider(ProviderConfig config, ProviderTransport transpo
         return Parse(response.Content, includeRaw);
     }
 
-    public Task<SearchResult> GetAsync(string id, bool includeRaw, CancellationToken cancellationToken)
+    public Task<SearchResult> GetAsync(string id, string? region, bool includeRaw, CancellationToken cancellationToken)
         => throw new BookMetaException($"Provider '{Id}' does not support get by ID.", ExitCodes.UnsupportedCapability, "Use 'bookmeta search' for generic ABS providers.");
 
     public async Task<ProviderTestResult> TestAsync(CancellationToken cancellationToken)

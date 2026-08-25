@@ -14,6 +14,7 @@ public sealed record SearchRequest
     public string? Asin { get; init; }
     public string? Language { get; init; }
     public string? Region { get; init; }
+    public int? Page { get; init; }
     public int LimitPerProvider { get; init; } = 10;
     public bool Exact { get; init; }
 
@@ -51,6 +52,13 @@ public sealed record SearchResult
     public string? ReleaseDate { get; init; }
     public string? Language { get; init; }
     public long? DurationSeconds { get; init; }
+    public double? Rating { get; init; }
+    public string? Format { get; init; }
+    public List<string> Regions { get; init; } = [];
+    public bool? IsAvailable { get; init; }
+    public bool? IsBuyable { get; init; }
+    public bool? IsListenable { get; init; }
+    public bool? IsVirtualVoice { get; init; }
     public List<string> Genres { get; init; } = [];
     public List<string> Tags { get; init; } = [];
     public string? CoverUrl { get; init; }

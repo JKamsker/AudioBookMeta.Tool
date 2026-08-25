@@ -140,6 +140,48 @@
       ],
       "minimum": 0
     },
+    "rating": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "format": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "regions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "is_available": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "is_buyable": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "is_listenable": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "is_virtual_voice": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
     "genres": {
       "type": "array",
       "items": {

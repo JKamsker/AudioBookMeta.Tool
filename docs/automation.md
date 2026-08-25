@@ -12,11 +12,14 @@ Use `--json` to select the stable v1 JSON contract:
 bookmeta search "Dune" --json
 bookmeta providers list --json
 bookmeta get libex:B08G9PRS1K --json
+bookmeta author books "Andy Weir" --provider libex --json
 ```
 
 Top-level JSON documents carry `"schema_version": 1`. Search output conforms to the bundled [search response schema](tasks/initial/bookmeta-cli-spec/schemas/search-response.schema.json), which references the [search result schema](tasks/initial/bookmeta-cli-spec/schemas/search-result.schema.json).
 
 Within schema v1, new optional fields may be added, but existing fields are not repurposed. A breaking change requires a new schema version.
+
+`author books --json` emits `{ "schema_version": 1, "request": {...}, "results": [...] }`. Its normalized results use the same result shape as search and get. `--raw` adds unversioned provider payloads and therefore requires `--json`.
 
 ## JSON Lines
 

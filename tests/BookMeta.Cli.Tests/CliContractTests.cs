@@ -11,6 +11,7 @@ public sealed class CliContractTests
         var result = await RunAsync("--help");
         Assert.Equal(0, result.ExitCode);
         Assert.Contains("search", result.Stdout, StringComparison.Ordinal);
+        Assert.Contains("author", result.Stdout, StringComparison.Ordinal);
         Assert.Contains("providers", result.Stdout, StringComparison.Ordinal);
         Assert.Contains("config", result.Stdout, StringComparison.Ordinal);
     }
@@ -47,6 +48,27 @@ public sealed class CliContractTests
         var result = await RunAsync("search", "dune", "--json", "--jsonl", "--config", SampleConfig());
         Assert.Equal(2, result.ExitCode);
         Assert.Empty(result.Stdout);
+    }
+
+    [Fact]
+    public async Task Native_page_rejects_providers_that_cannot_honor_it()
+    {
+        var result = await RunAsync("search", "dune", "--page", "1", "--config", SampleConfig());
+        Assert.Equal(6, result.ExitCode);
+        Assert.Empty(result.Stdout);
+        Assert.Contains("requires native pagination", result.Stderr, StringComparison.Ordinal);
+        Assert.Contains("--provider libex", result.Stderr, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Author_books_help_documents_provider_native_lookup()
+    {
+        var result = await RunAsync("author", "books", "--help");
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("<NAME>", result.Stdout, StringComparison.Ordinal);
+        Assert.Contains("--provider", result.Stdout, StringComparison.Ordinal);
+        Assert.Contains("--region", result.Stdout, StringComparison.Ordinal);
+        Assert.Contains("--json", result.Stdout, StringComparison.Ordinal);
     }
 
     private static async Task<ProcessResult> RunAsync(params string[] arguments)

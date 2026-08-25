@@ -37,6 +37,9 @@ public sealed class SearchSettings : GlobalSettings
     public string? Language { get; init; }
     [CommandOption("--region <CODE>")]
     public string? Region { get; init; }
+    [CommandOption("--page <NUMBER>")]
+    [Description("Native zero-based provider page, from 0 to 9; requires native pagination support.")]
+    public int? Page { get; init; }
     [CommandOption("--limit <N>")]
     public int? Limit { get; init; }
     [CommandOption("--limit-per-provider <N>")]
@@ -72,6 +75,8 @@ public sealed class SearchSettings : GlobalSettings
             return ValidationResult.Error("--raw requires --json or --jsonl.");
         if (Limit is <= 0 || LimitPerProvider is <= 0)
             return ValidationResult.Error("Limits must be positive integers.");
+        if (Page is < SearchLimits.MinimumNativePage or > SearchLimits.MaximumNativePage)
+            return ValidationResult.Error($"--page must be between {SearchLimits.MinimumNativePage} and {SearchLimits.MaximumNativePage}.");
         if (Timeout is not null && !DurationParser.TryParse(Timeout, out _))
             return ValidationResult.Error("--timeout must be a positive duration such as 500ms, 4s, or 1m.");
         if (Deadline is not null && !DurationParser.TryParse(Deadline, out _))
@@ -101,6 +106,7 @@ public sealed class SearchCommand(ConfigLoader loader, SearchEngine engine, Sear
             Asin = settings.Asin,
             Language = settings.Language,
             Region = settings.Region,
+            Page = settings.Page,
             LimitPerProvider = settings.LimitPerProvider ?? config.Search.LimitPerProvider,
             Exact = settings.Exact,
             Editions = settings.Editions
