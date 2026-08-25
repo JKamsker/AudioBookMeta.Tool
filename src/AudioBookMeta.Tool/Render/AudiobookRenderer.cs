@@ -70,7 +70,7 @@ public sealed class AudiobookRenderer(AppConsole console)
         Add(table, "Source", book.SourceUrl);
         Add(table, "Short link", book.ShortUrl);
         foreach (var link in book.ShopLinks)
-            Add(table, $"Shop: {link.Provider}", link.Url);
+            Add(table, $"Shop: {ShopLinkDisplay.Name(link.Provider)}", link.Url);
         Add(table, "Cover", book.CoverUrl);
         Add(table, "Description", CleanDescription(book.Description));
         Add(table, "Liner notes", CleanDescription(book.LinerNotes));

@@ -10,6 +10,7 @@ internal static partial class LismioPageParser
 {
     internal static LismioPage ParsePage(string html, Uri pageUrl, int page, int limit)
     {
+        ArgumentOutOfRangeException.ThrowIfLessThan(limit, 1);
         var document = new HtmlParser().ParseDocument(html);
         var items = new List<LismioSummary>();
         foreach (var card in document.QuerySelectorAll(".ab-grid .appear-in[data-template]"))
@@ -30,11 +31,10 @@ internal static partial class LismioPageParser
                 NullIfEmpty(Clean(card.QuerySelector(".line-clamp-1")?.TextContent)),
                 url,
                 Absolute(card.QuerySelector("img")?.GetAttribute("src"), pageUrl)));
-            if (items.Count == limit) break;
+            if (items.Count >= limit) break;
         }
 
-        if (items.Count == 0 && !html.Contains("Keine Ergebnisse", StringComparison.OrdinalIgnoreCase)
-            && !html.Contains("No results", StringComparison.OrdinalIgnoreCase))
+        if (items.Count == 0 && document.QuerySelector(".ab-grid") is null)
         {
             throw new InvalidDataException("Lismio's page format was not recognized: no audiobook cards were found.");
         }

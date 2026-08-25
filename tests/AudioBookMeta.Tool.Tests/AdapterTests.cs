@@ -216,6 +216,22 @@ public sealed class AdapterTests
     }
 
     [Fact]
+    public async Task Lismio_localized_empty_page_is_a_successful_empty_search()
+    {
+        var factory = new TestHttpFactory((_, _) => Task.FromResult(TestHttpFactory.Html(
+            "<main><div class=\"ab-grid\"></div><p>Sin resultados</p></main>")));
+        var provider = new LismioProvider(Config("lismio"), new ProviderTransport(factory));
+
+        var response = await provider.SearchAsync(
+            new SearchRequest { Query = "missing" },
+            false,
+            TestContext.Current.CancellationToken);
+
+        Assert.Empty(response.Candidates);
+        Assert.Equal(1, response.RequestCount);
+    }
+
+    [Fact]
     public async Task Authenticated_cross_host_redirect_is_refused()
     {
         var factory = new TestHttpFactory((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.Redirect)

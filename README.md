@@ -65,6 +65,7 @@ timeout = "15s"
 
 [groups]
 default = ["libex", "audiosilo", "lismio"]
+audiobook = ["libex", "audiosilo", "lismio"]
 ```
 
 Check the file, then try a search:

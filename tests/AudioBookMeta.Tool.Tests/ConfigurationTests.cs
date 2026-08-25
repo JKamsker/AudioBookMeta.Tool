@@ -81,7 +81,7 @@ public sealed class ConfigurationTests
             [providers.lismio]
             type = "lismio"
             base_url = "https://lismio.app"
-            region = "de"
+            region = "de-DE"
             """);
 
         var config = new ConfigLoader(new ConfigPathResolver()).Load(path);
@@ -89,15 +89,20 @@ public sealed class ConfigurationTests
         Assert.Equal("lismio", config.Providers["lismio"].Type);
     }
 
-    [Fact]
-    public void Lismio_locale_is_validated_during_configuration_load()
+    [Theory]
+    [InlineData("-")]
+    [InlineData("-de")]
+    [InlineData("de-")]
+    [InlineData("de--AT")]
+    [InlineData("../../internal")]
+    public void Invalid_Lismio_locale_is_rejected_during_configuration_load(string locale)
     {
-        var path = TemporaryConfig("""
+        var path = TemporaryConfig($$"""
             version = 1
             [providers.lismio]
             type = "lismio"
             base_url = "https://lismio.app"
-            region = "../../internal"
+            region = "{{locale}}"
             """);
 
         Assert.Throws<AudiobookMetaException>(() => new ConfigLoader(new ConfigPathResolver()).Load(path));

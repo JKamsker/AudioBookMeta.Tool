@@ -1,4 +1,5 @@
 using AudiobookMeta.Tool.Common;
+using AudiobookMeta.Tool.Providers.Lismio;
 
 namespace AudiobookMeta.Tool.Configuration;
 
@@ -29,7 +30,7 @@ public static class ConfigValidator
             if (provider.Timeout is { } providerTimeout && providerTimeout <= TimeSpan.Zero)
                 errors.Add($"provider '{provider.Id}' timeout must be positive");
             if (provider.Type.Equals("lismio", StringComparison.OrdinalIgnoreCase)
-                && provider.Region is not null && !IsLocale(provider.Region))
+                && provider.Region is not null && !LismioLocale.TryNormalize(provider.Region, out _))
                 errors.Add($"provider '{provider.Id}' region must be a Lismio locale such as 'de'");
             if (provider.Auth is not null && !SecretResolver.HasValidSyntax(provider.Auth))
                 errors.Add($"provider '{provider.Id}' has invalid auth secret reference syntax");
@@ -90,13 +91,6 @@ public static class ConfigValidator
     private static bool IsLocal(string host)
         => host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || host.EndsWith(".local", StringComparison.OrdinalIgnoreCase) ||
            System.Net.IPAddress.TryParse(host, out var ip) && IsPrivate(ip);
-
-    private static bool IsLocale(string value)
-    {
-        var locale = value.Trim().Trim('/');
-        return locale.Length > 0
-            && locale.All(character => char.IsAsciiLetterOrDigit(character) || character == '-');
-    }
 
     private static bool IsPrivate(System.Net.IPAddress ip)
     {

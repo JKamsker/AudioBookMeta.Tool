@@ -84,6 +84,6 @@ public sealed class SearchRenderer(AppConsole console, ResultClusterer clusterer
 
     private static string ShopNames(IEnumerable<SearchResult> results) => string.Join(", ", results
         .SelectMany(result => result.ShopLinks)
-        .Select(link => link.Provider)
+        .Select(link => ShopLinkDisplay.Name(link.Provider))
         .Distinct(StringComparer.OrdinalIgnoreCase));
 }

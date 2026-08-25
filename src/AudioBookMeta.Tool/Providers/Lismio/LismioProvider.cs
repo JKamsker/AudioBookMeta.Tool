@@ -150,8 +150,7 @@ public sealed class LismioProvider(ProviderConfig config, ProviderTransport tran
 
     private static string Locale(string? value)
     {
-        var locale = string.IsNullOrWhiteSpace(value) ? "de" : value.Trim().Trim('/');
-        if (locale.Length == 0 || locale.Any(character => !char.IsAsciiLetterOrDigit(character) && character != '-'))
+        if (!LismioLocale.TryNormalize(value, out var locale))
         {
             throw new AudiobookMetaException(
                 $"Invalid Lismio locale '{value}'.",
