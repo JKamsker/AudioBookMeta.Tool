@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/AudioBookMeta.Tool/AudioBookMeta.Tool.csproj" />
+  <Project Path="tests/AudioBookMeta.Tool.Tests/AudioBookMeta.Tool.Tests.csproj" />
+</Solution>

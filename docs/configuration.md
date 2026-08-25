@@ -1,13 +1,13 @@
 # Configuration and providers
 
-`bookmeta` reads a TOML file that describes metadata providers and search defaults. It never modifies this file automatically.
+`dotnet audiobookmeta` reads a TOML file that describes metadata providers and search defaults. It never modifies this file automatically.
 
 ## Configuration location
 
 Print the effective path with:
 
 ```sh
-bookmeta config path
+dotnet audiobookmeta config path
 ```
 
 The default is:
@@ -17,6 +17,8 @@ The default is:
 | Linux | `$XDG_CONFIG_HOME/bookmeta/config.toml`, or `~/.config/bookmeta/config.toml` |
 | macOS | `~/Library/Application Support/bookmeta/config.toml` |
 | Windows | `%APPDATA%\bookmeta\config.toml` |
+
+The `bookmeta` directory name and `BOOKMETA_CONFIG` environment variable are retained for compatibility with existing installations.
 
 Use `--config PATH` for one command or set `BOOKMETA_CONFIG` to choose another file.
 
@@ -137,7 +139,7 @@ base_url = "https://metadata.example/private"
 auth = "env:BOOKMETA_PRIVATE_AUTH"
 
 [providers.private_catalog.headers]
-X-Api-Key = "file:/run/secrets/bookmeta-api-key"
+X-Api-Key = "file:/run/secrets/audiobookmeta-api-key"
 ```
 
 Supported secret references are:
@@ -148,7 +150,7 @@ Supported secret references are:
 | `file:/path` | Read the value from a file and trim its final newline |
 | `literal:value` | Store the value directly in TOML |
 
-`literal:` is supported for compatibility but stores plaintext. `bookmeta config validate` warns when it is used. Secret values and sensitive headers are redacted from provider inspection and diagnostic logs.
+`literal:` is supported for compatibility but stores plaintext. `dotnet audiobookmeta config validate` warns when it is used. Secret values and sensitive headers are redacted from provider inspection and diagnostic logs.
 
 Use `auth` for the complete `Authorization` header value. An `Authorization` entry inside `headers` is rejected.
 
@@ -159,10 +161,10 @@ A provider can join groups through its `groups` array or the top-level `[groups]
 With no selection option, `search` uses `default_group` when configured; otherwise it uses every enabled provider. Explicit `--provider` and `--group` options replace that default selection, and `--exclude` is applied last.
 
 ```sh
-bookmeta search "Dune" --provider libex
-bookmeta search "Dune" --group audiobook
-bookmeta search "Dune" --group audiobook --exclude slow-provider
-bookmeta search "Dune" -p @audiobook
+dotnet audiobookmeta search "Dune" --provider libex
+dotnet audiobookmeta search "Dune" --group audiobook
+dotnet audiobookmeta search "Dune" --group audiobook --exclude slow-provider
+dotnet audiobookmeta search "Dune" -p @audiobook
 ```
 
 Groups may include another group with `@name`. Recursive groups, missing members, unknown providers, and explicitly selected disabled providers are errors rather than silent fallbacks.
@@ -181,7 +183,7 @@ timeout = "6s"
 market = "us"
 
 [providers.custom.headers]
-X-Client = "bookmeta"
+X-Client = "audiobookmeta"
 
 [providers.custom.capabilities]
 isbn_filter = true
@@ -207,11 +209,11 @@ Authenticated redirects to another host are refused by default so credentials ca
 ## Validate and inspect
 
 ```sh
-bookmeta config validate
-bookmeta providers list
-bookmeta providers show PROVIDER
-bookmeta providers capabilities PROVIDER
-bookmeta providers test PROVIDER --timeout 10s
+dotnet audiobookmeta config validate
+dotnet audiobookmeta providers list
+dotnet audiobookmeta providers show PROVIDER
+dotnet audiobookmeta providers capabilities PROVIDER
+dotnet audiobookmeta providers test PROVIDER --timeout 10s
 ```
 
 `providers show` displays the effective provider configuration with credentials redacted. `providers capabilities` distinguishes supported, unsupported, and unknown behavior.

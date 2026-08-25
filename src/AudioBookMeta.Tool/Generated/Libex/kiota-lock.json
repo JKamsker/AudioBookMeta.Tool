@@ -1,0 +1,40 @@
+{
+  "descriptionHash": "52766DFDAD6E813377CBDCA7D5A9A6CE43930C57CD813C3CF4A7E5948934A831D0741D576435A4686891002A4A6E4883B6D06E98B9498B3DD8421C52528907D8",
+  "descriptionLocation": "../../../../docs/tasks/initial/bookmeta-cli-spec/sources/libexdb-openapi.json",
+  "lockFileVersion": "1.0.0",
+  "kiotaVersion": "1.34.1",
+  "clientClassName": "LibexApiClient",
+  "typeAccessModifier": "Internal",
+  "clientNamespaceName": "AudiobookMeta.Tool.Generated.Libex",
+  "language": "CSharp",
+  "usesBackingStore": false,
+  "excludeBackwardCompatible": true,
+  "includeAdditionalData": true,
+  "disableSSLValidation": false,
+  "serializers": [
+    "Microsoft.Kiota.Serialization.Json.JsonSerializationWriterFactory",
+    "Microsoft.Kiota.Serialization.Text.TextSerializationWriterFactory",
+    "Microsoft.Kiota.Serialization.Form.FormSerializationWriterFactory",
+    "Microsoft.Kiota.Serialization.Multipart.MultipartSerializationWriterFactory"
+  ],
+  "deserializers": [
+    "Microsoft.Kiota.Serialization.Json.JsonParseNodeFactory",
+    "Microsoft.Kiota.Serialization.Text.TextParseNodeFactory",
+    "Microsoft.Kiota.Serialization.Form.FormParseNodeFactory"
+  ],
+  "structuredMimeTypes": [
+    "application/json",
+    "text/plain;q=0.9",
+    "application/x-www-form-urlencoded;q=0.2",
+    "multipart/form-data;q=0.1"
+  ],
+  "includePatterns": [
+    "/search",
+    "/quick-search",
+    "/book/{asin}",
+    "/health"
+  ],
+  "excludePatterns": [],
+  "disabledValidationRules": [],
+  "allowedExternalOrigins": []
+}

@@ -1,6 +1,6 @@
 # Automation and machine output
 
-`bookmeta` is non-interactive and safe to use in scripts, pipes, cron jobs, and CI. It never prompts, reads stdin, or opens a browser.
+`dotnet audiobookmeta` is non-interactive and safe to use in scripts, pipes, cron jobs, and CI. It never prompts, reads stdin, or opens a browser.
 
 ## Human and machine output
 
@@ -9,10 +9,10 @@ Human-readable output is the default. Search and provider-list commands render t
 Use `--json` to select the stable v1 JSON contract:
 
 ```sh
-bookmeta search "Dune" --json
-bookmeta providers list --json
-bookmeta get libex:B08G9PRS1K --json
-bookmeta author books "Andy Weir" --provider libex --json
+dotnet audiobookmeta search "Dune" --json
+dotnet audiobookmeta providers list --json
+dotnet audiobookmeta get libex:B08G9PRS1K --json
+dotnet audiobookmeta author books "Andy Weir" --provider libex --json
 ```
 
 Top-level JSON documents carry `"schema_version": 1`. Search output conforms to the bundled [search response schema](tasks/initial/bookmeta-cli-spec/schemas/search-response.schema.json), which references the [search result schema](tasks/initial/bookmeta-cli-spec/schemas/search-result.schema.json).
@@ -26,7 +26,7 @@ Within schema v1, new optional fields may be added, but existing fields are not 
 `search --jsonl` writes one compact normalized result per line:
 
 ```sh
-bookmeta search "Dune" --jsonl | jq -r '.title'
+dotnet audiobookmeta search "Dune" --jsonl | jq -r '.title'
 ```
 
 JSONL has no envelope. Provider diagnostics go to standard error so every standard-output line remains parseable JSON. `--json` and `--jsonl` cannot be combined.
@@ -36,7 +36,7 @@ JSONL has no envelope. Provider diagnostics go to standard error so every standa
 Use `--raw` with JSON or JSONL when you also need each provider's original payload:
 
 ```sh
-bookmeta search "Dune" --json --raw
+dotnet audiobookmeta search "Dune" --json --raw
 ```
 
 Raw payloads are unversioned provider data and may change independently of the normalized v1 contract. Raw capture is size-limited and bypasses the normalized result cache.
@@ -68,7 +68,7 @@ No command emits JSON unless `--json` or `--jsonl` is explicitly supplied.
 By default, one failed provider does not discard successful results or make the search fail. Add `--strict` when complete provider coverage is required:
 
 ```sh
-bookmeta search "Dune" --json --strict
+dotnet audiobookmeta search "Dune" --json --strict
 ```
 
 ## Errors and diagnostics
@@ -83,18 +83,18 @@ Use `--verbose` to include the resolved configuration path, time limits, result 
 
 Set `NO_COLOR` or pass `--no-color` to disable ANSI output. Machine output never depends on terminal width, TTY detection, or color support.
 
-All commands are read-only. There are no confirmation prompts, `--yes`, or `--dry-run` modes because `bookmeta` does not create, update, or delete remote or local book data.
+All commands are read-only. There are no confirmation prompts, `--yes`, or `--dry-run` modes because `dotnet audiobookmeta` does not create, update, or delete remote or local book data.
 
 ## Suggested contract checks
 
 These checks cover the stable automation surface:
 
 ```sh
-bookmeta --help
-bookmeta providers list --no-color
-bookmeta providers list --json | jq -e '.schema_version == 1'
-bookmeta search "Dune" --json | jq -e '.results | type == "array"'
-bookmeta search "Dune" --jsonl | jq -c . >/dev/null
+dotnet audiobookmeta --help
+dotnet audiobookmeta providers list --no-color
+dotnet audiobookmeta providers list --json | jq -e '.schema_version == 1'
+dotnet audiobookmeta search "Dune" --json | jq -e '.results | type == "array"'
+dotnet audiobookmeta search "Dune" --jsonl | jq -c . >/dev/null
 ```
 
 The test suite also verifies that a representative list command is a human table by default, the same command emits valid versioned JSON with `--json`, invalid option combinations exit `2`, and strict provider failures preserve completed results.

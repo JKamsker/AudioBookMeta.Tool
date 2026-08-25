@@ -4,12 +4,12 @@ This page is for contributors and provider-adapter maintainers. User installatio
 
 ## CLI product contract
 
-`bookmeta` is a **multi-surface service CLI**: one search can contact several independently configured provider targets, each with its own URL, credentials, timeouts, and capabilities.
+`dotnet audiobookmeta` is a **multi-surface service CLI**: one search can contact several independently configured provider targets, each with its own URL, credentials, timeouts, and capabilities.
 
 The task-first command tree is:
 
 ```text
-bookmeta
+dotnet audiobookmeta
 ├── search [QUERY]
 ├── get PROVIDER:ID
 ├── author
@@ -52,21 +52,21 @@ git config core.hooksPath .githooks
 ```sh
 pwsh -NoProfile -File eng/check-source-length.ps1
 dotnet restore
-dotnet build BookMeta.slnx
-dotnet test BookMeta.slnx
-dotnet format BookMeta.slnx --verify-no-changes
-dotnet pack src/BookMeta.Cli -c Release --no-build --no-restore -o artifacts/nuget
+dotnet build AudioBookMeta.Tool.slnx
+dotnet test AudioBookMeta.Tool.slnx
+dotnet format AudioBookMeta.Tool.slnx --verify-no-changes
+dotnet pack src/AudioBookMeta.Tool -c Release --no-build --no-restore -o artifacts/nuget
 ```
 
 The source-length check warns above 300 lines and rejects handwritten C# files above 500 lines. A hard-limit exception requires a path and non-empty justification in `eng/source-length-exceptions.txt`; generated, build-output, and intermediate files are excluded.
 
-GitHub Actions repeats the source-length, formatting, Release build, and test checks. It then packs `BookMeta.Cli` as a NuGet tool, installs the package into an isolated tool directory, verifies the `bookmeta` command, and uploads the `.nupkg` as the run's `bookmeta-nuget-*` artifact.
+GitHub Actions repeats the source-length, formatting, Release build, and test checks. It then packs `AudioBookMeta.Tool` as a NuGet tool, installs the package into an isolated tool directory, verifies the `dotnet audiobookmeta` command, and uploads the `.nupkg` as the run's `audiobookmeta-tool-nuget-*` artifact.
 
 Publish a framework-dependent build for local inspection with:
 
 ```sh
-dotnet publish src/BookMeta.Cli -c Release -o artifacts/bookmeta
-dotnet artifacts/bookmeta/bookmeta.dll --help
+dotnet publish src/AudioBookMeta.Tool -c Release -o artifacts/audiobookmeta
+dotnet artifacts/audiobookmeta/dotnet-audiobookmeta.dll --help
 ```
 
 The user-facing self-contained publish command is documented in the repository [README](../README.md).
@@ -74,7 +74,7 @@ The user-facing self-contained publish command is documented in the repository [
 ## Source layout
 
 ```text
-src/BookMeta.Cli/
+src/AudioBookMeta.Tool/
 ├── Commands/          Spectre.Console.Cli commands and settings
 ├── Common/            process-wide output, errors, DI, and diagnostics
 ├── Configuration/     TOML loading, validation, selection, and secrets
@@ -84,7 +84,7 @@ src/BookMeta.Cli/
 ├── Render/            human and JSONL search rendering
 └── Search/            concurrency, cache, ranking, and clustering
 
-tests/BookMeta.Cli.Tests/
+tests/AudioBookMeta.Tool.Tests/
 ```
 
 `Program.cs` owns the visible command tree and dependency registration. Each non-generated command file contains one command class plus its settings type. Provider I/O stays behind adapter and transport abstractions rather than inside command handlers.
@@ -123,8 +123,8 @@ Kiota is pinned as a repository-local .NET tool in `.config/dotnet-tools.json`. 
 
 ```sh
 ./eng/generate-clients.sh
-dotnet build BookMeta.slnx
-dotnet test BookMeta.slnx
+dotnet build AudioBookMeta.Tool.slnx
+dotnet test AudioBookMeta.Tool.slnx
 ```
 
 Generation inputs:
@@ -132,7 +132,7 @@ Generation inputs:
 - Libex uses the bundled `docs/tasks/initial/bookmeta-cli-spec/sources/libexdb-openapi.json` for reproducibility.
 - AudioSilo uses `https://meta.audiosilo.app/api/v1/openapi.json`.
 
-Only the endpoints used by v1 are included. Generated code and each `kiota-lock.json` are committed under `src/BookMeta.Cli/Generated`. Do not hand-edit generated sources; adjust `eng/generate-clients.sh`, regenerate, and commit the resulting diff.
+Only the endpoints used by v1 are included. Generated code and each `kiota-lock.json` are committed under `src/AudioBookMeta.Tool/Generated`. Do not hand-edit generated sources; adjust `eng/generate-clients.sh`, regenerate, and commit the resulting diff.
 
 If upstream generation changes unexpectedly, compare the OpenAPI revision, Kiota tool version, included endpoint set, generated lock files, and package/runtime compatibility before changing hand-written adapters.
 

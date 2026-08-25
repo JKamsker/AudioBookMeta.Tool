@@ -29,30 +29,30 @@ jobs:
           global-json-file: global.json
 
       - name: Restore dependencies
-        run: dotnet restore BookMeta.slnx
+        run: dotnet restore AudioBookMeta.Tool.slnx
 
       - name: Enforce source length
         shell: pwsh
         run: ./eng/check-source-length.ps1
 
       - name: Verify formatting
-        run: dotnet format BookMeta.slnx --no-restore --verify-no-changes
+        run: dotnet format AudioBookMeta.Tool.slnx --no-restore --verify-no-changes
 
       - name: Build
-        run: dotnet build BookMeta.slnx --configuration Release --no-restore
+        run: dotnet build AudioBookMeta.Tool.slnx --configuration Release --no-restore
 
       - name: Test
         run: >-
-          dotnet test BookMeta.slnx
+          dotnet test AudioBookMeta.Tool.slnx
           --configuration Release
           --no-build
           --no-restore
-          --logger "trx;LogFileName=bookmeta-tests.trx"
+          --logger "trx;LogFileName=audiobookmeta-tests.trx"
           --results-directory artifacts/test-results
 
       - name: Pack NuGet tool
         run: >-
-          dotnet pack src/BookMeta.Cli/BookMeta.Cli.csproj
+          dotnet pack src/AudioBookMeta.Tool/AudioBookMeta.Tool.csproj
           --configuration Release
           --no-build
           --no-restore
@@ -65,15 +65,20 @@ jobs:
             --tool-path artifacts/tool \
             --add-source "$GITHUB_WORKSPACE/artifacts/nuget" \
             --ignore-failed-sources \
-            BookMeta.Cli \
+            AudioBookMeta.Tool \
             --version 1.0.0
-          artifacts/tool/bookmeta --version
-          artifacts/tool/bookmeta search --help
+          export PATH="$GITHUB_WORKSPACE/artifacts/tool:$PATH"
+          dotnet audiobookmeta --version
+          dotnet audiobookmeta search --help
+          dotnet audiobookmeta providers show --help
+          dotnet audiobookmeta providers show libex \
+            --config docs/tasks/initial/bookmeta-cli-spec/examples/config.toml \
+            --no-color
 
       - name: Upload NuGet tool
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: bookmeta-nuget-${{ github.sha }}
+          name: audiobookmeta-tool-nuget-${{ github.sha }}
           path: artifacts/nuget/*.nupkg
           if-no-files-found: error
           retention-days: 14
