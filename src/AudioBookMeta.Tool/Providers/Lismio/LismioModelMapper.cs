@@ -5,8 +5,11 @@ namespace AudiobookMeta.Tool.Providers.Lismio;
 
 internal sealed class LismioModelMapper(string providerId)
 {
-    internal SearchResult Map(LismioAudiobook book, string locale, JsonElement? raw) => new()
+    internal SearchResult Map(LismioAudiobook book, string locale, JsonElement? raw)
     {
+        var extracted = LismioIdentifierExtractor.Extract(book);
+        return new()
+        {
         Provider = providerId,
         ProviderType = "lismio",
         ProviderRecordId = book.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
@@ -16,10 +19,8 @@ internal sealed class LismioModelMapper(string providerId)
         Contributors = book.Contributors.Select(person => new ContributorEntry(
             person.Name, person.Role, person.Url?.AbsoluteUri)).ToList(),
         Series = book.Series is null ? [] : [new SeriesEntry(book.Series)],
-        Identifiers = new Identifiers
-        {
-            Other = book.Ean is null ? [] : new Dictionary<string, object> { ["ean"] = book.Ean }
-        },
+        Identifiers = extracted.Identifiers,
+        IdentifierProvenance = extracted.Provenance,
         Publisher = book.Publisher,
         PublishedYear = book.Year,
         ReleaseDate = book.ReleaseDate,
@@ -48,7 +49,8 @@ internal sealed class LismioModelMapper(string providerId)
         Collections = book.Collections.Select(collection => new CollectionEntry(
             collection.Name, collection.Id, collection.Url.AbsoluteUri)).ToList(),
         Raw = raw
-    };
+        };
+    }
 
     internal SearchResult MapSummary(
         LismioSummary summary,

@@ -64,6 +64,8 @@ public sealed record EvidenceConflict
     public required string Reason { get; init; }
 }
 
+public sealed record IdentifierProvenanceEntry(string Type, string Value, string Source);
+
 public sealed record SearchResult
 {
     public required string Provider { get; init; }
@@ -78,6 +80,7 @@ public sealed record SearchResult
     public List<ContributorEntry> Contributors { get; init; } = [];
     public List<SeriesEntry> Series { get; init; } = [];
     public Identifiers Identifiers { get; init; } = new();
+    public List<IdentifierProvenanceEntry> IdentifierProvenance { get; init; } = [];
     public string? Publisher { get; init; }
     public object? PublishedYear { get; init; }
     public string? ReleaseDate { get; init; }

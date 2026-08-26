@@ -246,6 +246,32 @@ public sealed class AdapterTests
     }
 
     [Fact]
+    public async Task Lismio_extracts_audible_and_isbn_identifiers_with_provenance()
+    {
+        var factory = new TestHttpFactory((_, _) => Task.FromResult(TestHttpFactory.Html("""
+            <script type="application/ld+json">{"@type":"Audiobook","name":"Example",
+              "url":"https://provider.example/de/audiobook/74013/example"}</script>
+            <h1>Example</h1>
+            <div wire:key="version-1">9783862319138
+              <a href="https://www.awin1.com/cread.php?ref=x&amp;ued=https%3A%2F%2Fwww.audible.de%2Fpd%2F3961020469">Audible</a>
+              <a href="https://www.audible.de/search?keywords=B0FALSE123">Search</a>
+            </div>
+            """)));
+        var provider = new LismioProvider(Config("lismio"), new ProviderTransport(factory));
+
+        var result = await provider.GetAsync("74013", "de", false, TestContext.Current.CancellationToken);
+
+        Assert.Equal("3961020469", Assert.Single(result.Identifiers.Asin));
+        Assert.Equal("9783862319138", Assert.Single(result.Identifiers.Isbn13));
+        Assert.Equal("386231913X", Assert.Single(result.Identifiers.Isbn10));
+        Assert.DoesNotContain("B0FALSE123", result.Identifiers.Asin);
+        Assert.Contains(result.IdentifierProvenance, item => item.Type == "asin"
+            && item.Value == "3961020469" && item.Source.Contains("awin1.com", StringComparison.Ordinal));
+        Assert.Contains(result.IdentifierProvenance, item => item.Type == "isbn10"
+            && item.Source == "derived_from_isbn13:9783862319138");
+    }
+
+    [Fact]
     public async Task Lismio_search_returns_cards_without_detail_hydration_by_default()
     {
         var requests = 0;

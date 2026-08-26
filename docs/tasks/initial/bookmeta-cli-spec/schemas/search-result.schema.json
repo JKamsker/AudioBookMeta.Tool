@@ -124,6 +124,19 @@
       },
       "additionalProperties": false
     },
+    "identifier_provenance": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "value", "source"],
+        "properties": {
+          "type": { "type": "string" },
+          "value": { "type": "string" },
+          "source": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
     "publisher": {
       "type": [
         "string",
