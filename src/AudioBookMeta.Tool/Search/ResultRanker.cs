@@ -133,7 +133,7 @@ public sealed class ResultRanker
     private static void AssessIdentifierEvidence(SearchRequest request, SearchResult result)
     {
         var corroborations = 0;
-        AssessText("title", request.Title, result.Title, .45, .80, result, ref corroborations);
+        AssessText("title", request.Title ?? request.Query, result.Title, .45, .80, result, ref corroborations);
         AssessText("author", request.Author, string.Join(", ", result.Authors), .35, .75, result, ref corroborations);
         AssessText("narrator", request.Narrator, string.Join(", ", result.Narrators), .35, .75, result, ref corroborations);
         AssessText("publisher", request.Publisher, result.Publisher, .35, .75, result, ref corroborations);

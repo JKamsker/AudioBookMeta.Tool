@@ -58,7 +58,7 @@ Adopt one reported default explicitly—even when it is classified as custom—w
 dotnet audiobookmeta config migrate --apply providers.libex.region
 ```
 
-`--apply` is repeatable. A migration updates `template_version` atomically, is idempotent, and preserves custom providers, groups, credentials, and unrelated settings. The first tracked migration recognizes the old generated `providers.libex.region = "us"` value and offers the current `"de"` default; an intentional non-default marketplace remains untouched unless its exact key is selected with `--apply`.
+`--apply` is repeatable. A migration updates `template_version` atomically only after all recognized generated changes are handled, is idempotent, and preserves custom providers, groups, credentials, and unrelated settings. The first tracked migration recognizes the old generated `providers.libex.region = "us"` value and offers the current `"de"` default, plus the additive `audible-de` provider and `audible` group introduced by template version 2. An intentional non-default marketplace remains untouched unless its exact key is selected with `--apply`.
 
 ## Configure through the CLI
 
@@ -172,6 +172,13 @@ audible = ["audible-de", "audible-es", "audible-uk"]
 Search all configured marketplaces with `--group audible`, or select one with `--provider audible-es`. Supported marketplace codes are `au`, `br`, `ca`, `de`, `es`, `fr`, `in`, `it`, `jp`, `uk`, and `us`. Results retain regional ASINs separately and include marketplace provenance in `regions` and `identifier_provenance`.
 
 The catalogue API is a public Audible application endpoint but is not a documented compatibility contract for third-party integrations. Its use remains subject to Audible's applicable terms. The adapter is isolated so response changes can be handled without affecting other providers; malformed payloads are reported separately from valid empty/de-listed results.
+
+For Lismio installations or locales where the default health record `23709` is unavailable, configure another stable numeric record without forwarding the setting to Lismio:
+
+```toml
+[providers.lismio.query_params]
+health_probe_id = "74013"
+```
 
 Provider IDs such as `libex`, `audiosilo`, and `lismio` are the names used by `--provider`, `providers show`, and `get`.
 

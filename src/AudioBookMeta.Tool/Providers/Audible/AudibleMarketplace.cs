@@ -39,4 +39,10 @@ public static class AudibleMarketplace
     }
 
     public static string Domain(string marketplace) => Domains[marketplace];
+
+    public static bool IsAudibleHost(string host)
+    {
+        var normalized = host.StartsWith("www.", StringComparison.OrdinalIgnoreCase) ? host[4..] : host;
+        return Domains.Values.Any(domain => normalized.Equals($"audible.{domain}", StringComparison.OrdinalIgnoreCase));
+    }
 }

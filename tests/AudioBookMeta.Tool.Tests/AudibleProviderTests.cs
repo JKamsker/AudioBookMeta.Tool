@@ -86,6 +86,18 @@ public sealed class AudibleProviderTests
     }
 
     [Fact]
+    public async Task Successful_direct_response_without_a_product_is_malformed_not_empty()
+    {
+        var malformed = new TestHttpFactory((_, _) => Task.FromResult(TestHttpFactory.Json("{}")));
+
+        var exception = await Assert.ThrowsAsync<ProviderException>(() => Provider(malformed).SearchAsync(
+            new SearchRequest { Asin = "B084WH8CFN" }, false, TestContext.Current.CancellationToken));
+
+        Assert.Equal("invalid_response", exception.Kind);
+        Assert.Null(exception.StatusCode);
+    }
+
+    [Fact]
     public async Task Empty_search_is_valid_but_a_malformed_shape_is_not()
     {
         var empty = new TestHttpFactory((_, _) => Task.FromResult(TestHttpFactory.Json("{\"products\":[],\"total_results\":0}")));

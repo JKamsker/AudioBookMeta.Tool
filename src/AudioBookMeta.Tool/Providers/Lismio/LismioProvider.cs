@@ -10,7 +10,8 @@ namespace AudiobookMeta.Tool.Providers.Lismio;
 public sealed class LismioProvider(ProviderConfig config, ProviderTransport transport) : IMetadataProvider
 {
     private const int DetailConcurrency = 4;
-    private const long HealthProbeRecordId = 23709;
+    private const long DefaultHealthProbeRecordId = 23709;
+    private const string HealthProbeParameter = "health_probe_id";
     private readonly LismioModelMapper mapper = new(config.Id);
 
     public string Id => config.Id;
@@ -85,18 +86,19 @@ public sealed class LismioProvider(ProviderConfig config, ProviderTransport tran
     {
         var timer = System.Diagnostics.Stopwatch.StartNew();
         var locale = Locale(config.Region);
-        var uri = DetailUri(HealthProbeRecordId, locale);
+        var healthProbeRecordId = HealthProbeRecordId();
+        var uri = DetailUri(healthProbeRecordId, locale);
         var response = await transport.GetHtmlAsync(config, uri, cancellationToken);
         try
         {
             _ = LismioPageParser.ParseAudiobook(
-                Encoding.UTF8.GetString(response.Content), response.Uri, HealthProbeRecordId);
+                Encoding.UTF8.GetString(response.Content), response.Uri, healthProbeRecordId);
         }
         catch (InvalidDataException exception)
         {
             throw new ProviderException(config.Id, "invalid_response", exception.Message, inner: exception);
         }
-        return new(config.Id, "ok", timer.ElapsedMilliseconds, $"Lismio detail record {HealthProbeRecordId} is reachable and parseable");
+        return new(config.Id, "ok", timer.ElapsedMilliseconds, $"Lismio detail record {healthProbeRecordId} is reachable and parseable");
     }
 
     private async Task HydrateAsync(
@@ -151,7 +153,18 @@ public sealed class LismioProvider(ProviderConfig config, ProviderTransport tran
         StaticQueryParameters());
 
     private IEnumerable<KeyValuePair<string, string?>> StaticQueryParameters() =>
-        config.QueryParams.Select(pair => new KeyValuePair<string, string?>(pair.Key, pair.Value));
+        config.QueryParams.Where(pair => !pair.Key.Equals(HealthProbeParameter, StringComparison.OrdinalIgnoreCase))
+            .Select(pair => new KeyValuePair<string, string?>(pair.Key, pair.Value));
+
+    private long HealthProbeRecordId()
+    {
+        if (!config.QueryParams.TryGetValue(HealthProbeParameter, out var configured))
+            return DefaultHealthProbeRecordId;
+        if (long.TryParse(configured, NumberStyles.None, CultureInfo.InvariantCulture, out var recordId) && recordId > 0)
+            return recordId;
+        throw new ProviderException(config.Id, "invalid_configuration",
+            $"Lismio {HealthProbeParameter} must be a positive numeric audiobook ID");
+    }
 
     private static JsonElement? Raw(bool includeRaw, string html) =>
         includeRaw ? JsonSerializer.SerializeToElement(new { detail_html = html }) : null;

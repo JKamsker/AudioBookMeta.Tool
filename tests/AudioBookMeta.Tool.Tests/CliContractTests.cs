@@ -220,7 +220,8 @@ public sealed class CliContractTests
         using (var json = JsonDocument.Parse(status.Stdout))
         {
             Assert.Equal(1, json.RootElement.GetProperty("schema_version").GetInt32());
-            var difference = Assert.Single(json.RootElement.GetProperty("differences").EnumerateArray());
+            var difference = json.RootElement.GetProperty("differences").EnumerateArray()
+                .Single(item => item.GetProperty("key").GetString() == "providers.libex.region");
             Assert.Equal("providers.libex.region", difference.GetProperty("key").GetString());
             Assert.True(difference.GetProperty("generated_default_candidate").GetBoolean());
         }
@@ -230,7 +231,7 @@ public sealed class CliContractTests
         using (var json = JsonDocument.Parse(preview.Stdout))
         {
             Assert.True(json.RootElement.GetProperty("dry_run").GetBoolean());
-            Assert.Equal(2, json.RootElement.GetProperty("changes").GetArrayLength());
+            Assert.Equal(4, json.RootElement.GetProperty("changes").GetArrayLength());
         }
         Assert.DoesNotContain("template_version", await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken), StringComparison.Ordinal);
     }

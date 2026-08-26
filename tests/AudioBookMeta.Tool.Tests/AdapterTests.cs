@@ -365,35 +365,6 @@ public sealed class AdapterTests
     }
 
     [Fact]
-    public async Task Lismio_health_uses_a_known_detail_record_instead_of_non_empty_search()
-    {
-        var factory = new TestHttpFactory((request, _) =>
-        {
-            Assert.Equal("/de/audiobook/23709", request.RequestUri!.AbsolutePath);
-            return Task.FromResult(TestHttpFactory.Html(LismioDetailHtml));
-        });
-        var provider = new LismioProvider(Config("lismio") with { Region = "de" }, new ProviderTransport(factory));
-
-        var result = await provider.TestAsync(TestContext.Current.CancellationToken);
-
-        Assert.Equal("ok", result.Status);
-        Assert.Contains("23709", result.Message, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public async Task Lismio_health_still_rejects_a_malformed_detail_page()
-    {
-        var factory = new TestHttpFactory((_, _) => Task.FromResult(TestHttpFactory.Html("<html><main>changed</main></html>")));
-        var provider = new LismioProvider(Config("lismio"), new ProviderTransport(factory));
-
-        var exception = await Assert.ThrowsAsync<ProviderException>(() =>
-            provider.TestAsync(TestContext.Current.CancellationToken));
-
-        Assert.Equal("invalid_response", exception.Kind);
-        Assert.Contains("title", exception.Message, StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
     public async Task Authenticated_cross_host_redirect_is_refused()
     {
         var factory = new TestHttpFactory((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.Redirect)

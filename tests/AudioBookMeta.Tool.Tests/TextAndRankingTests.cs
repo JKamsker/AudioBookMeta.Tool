@@ -30,13 +30,25 @@ public sealed class TextAndRankingTests
     }
 
     [Fact]
-    public void Exact_identifier_dominates_text_similarity()
+    public void Exact_identifier_without_conflicting_structured_metadata_is_decisive()
     {
         var identifier = Result("Unrelated title", "Someone") with { Identifiers = new Identifiers { Asin = ["B08G9PRS1K"] } };
-        var text = Result("Project Hail Mary", "Andy Weir");
-        var ranked = new ResultRanker().Rank(new SearchRequest { Query = "Project Hail Mary", Asin = "B08G9PRS1K" }, [text, identifier]);
+        var text = Result("Project Hail Mary", "Andy Weir") with { Score = 99 };
+        var ranked = new ResultRanker().Rank(new SearchRequest { Asin = "B08G9PRS1K" }, [text, identifier]);
         Assert.Same(identifier, ranked[0]);
         Assert.Equal("exact", identifier.Confidence);
+    }
+
+    [Fact]
+    public void Query_text_is_checked_for_identifier_conflicts()
+    {
+        var identifier = Result("Unrelated title", "Someone") with { Identifiers = new Identifiers { Asin = ["B08G9PRS1K"] } };
+
+        _ = new ResultRanker().Rank(new SearchRequest { Query = "Project Hail Mary", Asin = "B08G9PRS1K" }, [identifier]);
+
+        Assert.Equal("conflicting_identifier_match", identifier.MatchAssessment);
+        Assert.Contains(identifier.Conflicts, conflict => conflict.Field == "title");
+        Assert.NotEqual("exact", identifier.Confidence);
     }
 
     [Fact]

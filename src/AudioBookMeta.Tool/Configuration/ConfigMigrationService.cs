@@ -59,15 +59,18 @@ public sealed class ConfigMigrationService(ConfigPathResolver paths)
         var selected = differences.Where(difference => explicitKeys.Contains(difference.Key, StringComparer.OrdinalIgnoreCase)
             || adoptGeneratedDefaults && difference.GeneratedDefaultCandidate).ToList();
         var changes = selected.Select(difference => new ConfigMigrationChange(
-            difference.Key, difference.CurrentValue, difference.DefaultValue)).ToList();
-        if (previousVersion != DefaultConfigFile.TemplateVersion)
+            difference.Key, difference.CurrentValue == "<missing>" ? null : difference.CurrentValue, difference.DefaultValue)).ToList();
+        var canAdvanceTemplate = differences.Where(difference => difference.GeneratedDefaultCandidate)
+            .All(difference => selected.Contains(difference));
+        if (canAdvanceTemplate && previousVersion != DefaultConfigFile.TemplateVersion)
             changes.Add(new("template_version", previousVersion?.ToString(CultureInfo.InvariantCulture), DefaultConfigFile.TemplateVersion.ToString(CultureInfo.InvariantCulture)));
 
         if (!dryRun && changes.Count > 0)
         {
             foreach (var difference in selected)
-                Set(root, difference.Key, difference.DefaultValue);
-            root["template_version"] = DefaultConfigFile.TemplateVersion;
+                Apply(root, difference);
+            if (canAdvanceTemplate)
+                root["template_version"] = DefaultConfigFile.TemplateVersion;
             Save(path, root);
         }
 
@@ -97,6 +100,38 @@ public sealed class ConfigMigrationService(ConfigPathResolver paths)
                         : "value differs from the current default and is treated as an explicit customization"));
             }
         }
+        var legacyTemplate = recordedVersion is null or < 2;
+        if (Find(root, "providers.audible-de") is null)
+        {
+            differences.Add(new(
+                "providers.audible-de",
+                "<missing>",
+                "Audible Germany provider",
+                legacyTemplate,
+                legacyTemplate
+                    ? "provider was added by template version 2"
+                    : "current template provider is missing and is treated as an explicit customization"));
+        }
+        if (Find(root, "groups.audible") is not TomlArray audibleGroup)
+        {
+            differences.Add(new(
+                "groups.audible",
+                "<missing>",
+                "audible-de",
+                legacyTemplate,
+                legacyTemplate
+                    ? "provider group was added by template version 2"
+                    : "current template group is missing and is treated as an explicit customization"));
+        }
+        else if (!audibleGroup.OfType<string>().Contains("audible-de", StringComparer.OrdinalIgnoreCase))
+        {
+            differences.Add(new(
+                "groups.audible",
+                string.Join(',', audibleGroup.OfType<string>()),
+                string.Join(',', audibleGroup.OfType<string>().Append("audible-de")),
+                false,
+                "existing group is customized and will be preserved unless selected explicitly"));
+        }
         return differences;
     }
 
@@ -124,8 +159,17 @@ public sealed class ConfigMigrationService(ConfigPathResolver paths)
 
     private static void Save(string path, TomlTable root)
     {
-        var content = TomlSerializer.Serialize(root, new TomlSerializerOptions { WriteIndented = true });
-        DefaultConfigFile.WriteAtomically(path, content.EndsWith('\n') ? content : content + Environment.NewLine);
+        try
+        {
+            var content = TomlSerializer.Serialize(root, new TomlSerializerOptions { WriteIndented = true });
+            DefaultConfigFile.WriteAtomically(path, content.EndsWith('\n') ? content : content + Environment.NewLine);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or TomlException)
+        {
+            throw new AudiobookMetaException(
+                $"Could not update the configuration file: {path}", ExitCodes.Configuration,
+                "Check that the file is writable and valid TOML, then retry.", exception);
+        }
     }
 
     private static int? OptionalInteger(TomlTable root, string key)
@@ -142,13 +186,47 @@ public sealed class ConfigMigrationService(ConfigPathResolver paths)
         return current;
     }
 
-    private static void Set(TomlTable root, string key, object value)
+    private static void Apply(TomlTable root, ConfigDefaultDifference difference)
     {
-        var parts = key.Split('.');
+        if (difference.Key == "providers.audible-de")
+        {
+            var providers = root["providers"] as TomlTable ?? (TomlTable)(root["providers"] = new TomlTable());
+            providers["audible-de"] = new TomlTable
+            {
+                ["type"] = "audible",
+                ["base_url"] = "https://api.audible.de",
+                ["enabled"] = true,
+                ["region"] = "de",
+                ["priority"] = 85L,
+                ["groups"] = Array("audible")
+            };
+            return;
+        }
+        if (difference.Key == "groups.audible")
+        {
+            var groups = root["groups"] as TomlTable ?? (TomlTable)(root["groups"] = new TomlTable());
+            var members = groups.TryGetValue("audible", out var configured) && configured is TomlArray existing
+                ? existing
+                : [];
+            if (!members.OfType<string>().Contains("audible-de", StringComparer.OrdinalIgnoreCase))
+                members.Add("audible-de");
+            groups["audible"] = members;
+            return;
+        }
+
+        var parts = difference.Key.Split('.');
         var table = root;
         foreach (var part in parts[..^1])
             table = table[part] as TomlTable ?? throw ConfigError($"missing table '{part}'");
-        table[parts[^1]] = value;
+        table[parts[^1]] = difference.DefaultValue;
+    }
+
+    private static TomlArray Array(params string[] values)
+    {
+        var array = new TomlArray();
+        foreach (var value in values)
+            array.Add(value);
+        return array;
     }
 
     private static AudiobookMetaException ConfigError(string message)

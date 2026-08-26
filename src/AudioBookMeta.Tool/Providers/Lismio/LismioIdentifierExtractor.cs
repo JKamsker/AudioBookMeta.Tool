@@ -69,7 +69,8 @@ internal static class LismioIdentifierExtractor
 
     private static Uri UnwrapKnownAffiliate(Uri source)
     {
-        if (!source.Host.EndsWith("awin1.com", StringComparison.OrdinalIgnoreCase))
+        if (!(source.Host.Equals("awin1.com", StringComparison.OrdinalIgnoreCase)
+            || source.Host.EndsWith(".awin1.com", StringComparison.OrdinalIgnoreCase)))
             return source;
         foreach (var pair in source.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
         {
@@ -85,8 +86,7 @@ internal static class LismioIdentifierExtractor
 
     private static bool IsAudibleHost(string host)
     {
-        var normalized = host.StartsWith("www.", StringComparison.OrdinalIgnoreCase) ? host[4..] : host;
-        return normalized.StartsWith("audible.", StringComparison.OrdinalIgnoreCase);
+        return AudiobookMeta.Tool.Providers.Audible.AudibleMarketplace.IsAudibleHost(host);
     }
 
     private static bool IsValidIsbn13(string value)

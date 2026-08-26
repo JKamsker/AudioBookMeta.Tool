@@ -78,7 +78,7 @@ public sealed class AudibleProvider(ProviderConfig config, ProviderTransport tra
         var response = await transport.GetAsync(config, uri, cancellationToken);
         using var document = Parse(response.Content);
         if (!document.RootElement.TryGetProperty("product", out var product) || product.ValueKind != JsonValueKind.Object)
-            throw new ProviderException(Id, "not_found", $"Audible product '{asin}' was not found in marketplace '{marketplace}'", 404);
+            throw new ProviderException(Id, "invalid_response", $"Audible product response for '{asin}' in marketplace '{marketplace}' has no product object");
         return Mapper(marketplace).Map(product, includeRaw, "direct_asin")
             ?? throw new ProviderException(Id, "invalid_response", "Audible product response is missing ASIN or title");
     }
