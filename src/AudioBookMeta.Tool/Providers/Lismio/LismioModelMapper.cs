@@ -10,45 +10,45 @@ internal sealed class LismioModelMapper(string providerId)
         var extracted = LismioIdentifierExtractor.Extract(book);
         return new()
         {
-        Provider = providerId,
-        ProviderType = "lismio",
-        ProviderRecordId = book.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
-        Title = book.Title,
-        Authors = Prefer(book.Authors, book.Creators),
-        Narrators = [.. book.Narrators],
-        Contributors = book.Contributors.Select(person => new ContributorEntry(
-            person.Name, person.Role, person.Url?.AbsoluteUri)).ToList(),
-        Series = book.Series is null ? [] : [new SeriesEntry(book.Series)],
-        Identifiers = extracted.Identifiers,
-        IdentifierProvenance = extracted.Provenance,
-        Publisher = book.Publisher,
-        PublishedYear = book.Year,
-        ReleaseDate = book.ReleaseDate,
-        DurationSeconds = book.DurationMinutes * 60L,
-        Format = "audiobook",
-        Regions = [locale],
-        IsAvailable = book.Shops.Count > 0,
-        IsListenable = book.Shops.Count > 0,
-        Abridged = book.Abridged,
-        Tags = book.Collections.Select(collection => collection.Name)
-            .Where(name => name.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
-        CoverUrl = book.CoverUrl?.AbsoluteUri,
-        Description = book.Description,
-        SourceUrl = book.Url.AbsoluteUri,
-        ShortUrl = book.ShortUrl?.AbsoluteUri,
-        LinerNotes = book.LinerNotes,
-        ShopLinks = MapLinks(book.Shops),
-        Versions = book.Versions.Select(version => new AudiobookVersionEntry
-        {
-            Id = version.Id,
-            Ean = version.Ean,
-            DurationSeconds = version.DurationMinutes * 60L,
-            Abridged = version.Abridged,
-            ShopLinks = MapLinks(version.Shops)
-        }).ToList(),
-        Collections = book.Collections.Select(collection => new CollectionEntry(
-            collection.Name, collection.Id, collection.Url.AbsoluteUri)).ToList(),
-        Raw = raw
+            Provider = providerId,
+            ProviderType = "lismio",
+            ProviderRecordId = book.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            Title = book.Title,
+            Authors = Prefer(book.Authors, book.Creators),
+            Narrators = [.. book.Narrators],
+            Contributors = book.Contributors.Select(person => new ContributorEntry(
+                person.Name, person.Role, person.Url?.AbsoluteUri)).ToList(),
+            Series = book.Series is null ? [] : [new SeriesEntry(book.Series)],
+            Identifiers = extracted.Identifiers,
+            IdentifierProvenance = extracted.Provenance,
+            Publisher = book.Publisher,
+            PublishedYear = book.Year,
+            ReleaseDate = book.ReleaseDate,
+            DurationSeconds = book.DurationMinutes * 60L,
+            Format = "audiobook",
+            Regions = [locale],
+            IsAvailable = book.Shops.Count > 0,
+            IsListenable = book.Shops.Count > 0,
+            Abridged = book.Abridged,
+            Tags = book.Collections.Select(collection => collection.Name)
+                .Where(name => name.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            CoverUrl = book.CoverUrl?.AbsoluteUri,
+            Description = book.Description,
+            SourceUrl = book.Url.AbsoluteUri,
+            ShortUrl = book.ShortUrl?.AbsoluteUri,
+            LinerNotes = book.LinerNotes,
+            ShopLinks = MapLinks(book.Shops),
+            Versions = book.Versions.Select(version => new AudiobookVersionEntry
+            {
+                Id = version.Id,
+                Ean = version.Ean,
+                DurationSeconds = version.DurationMinutes * 60L,
+                Abridged = version.Abridged,
+                ShopLinks = MapLinks(version.Shops)
+            }).ToList(),
+            Collections = book.Collections.Select(collection => new CollectionEntry(
+                collection.Name, collection.Id, collection.Url.AbsoluteUri)).ToList(),
+            Raw = raw
         };
     }
 
