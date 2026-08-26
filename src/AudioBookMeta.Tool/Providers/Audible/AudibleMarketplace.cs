@@ -19,7 +19,12 @@ public static class AudibleMarketplace
 
     public static bool TryNormalize(string? value, out string marketplace)
     {
-        marketplace = (value ?? "us").Trim().ToLowerInvariant() switch
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            marketplace = string.Empty;
+            return false;
+        }
+        marketplace = value.Trim().ToLowerInvariant() switch
         {
             "gb" => "uk",
             "en-gb" => "uk",

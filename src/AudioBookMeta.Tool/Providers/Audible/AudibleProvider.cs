@@ -100,11 +100,11 @@ public sealed class AudibleProvider(ProviderConfig config, ProviderTransport tra
         throw new ProviderException(Id, "invalid_region", $"Unsupported Audible marketplace '{region ?? config.Region}'");
     }
 
-    private static string NormalizeAsin(string value)
+    private string NormalizeAsin(string value)
     {
         var asin = new string(value.Trim().Where(char.IsLetterOrDigit).ToArray()).ToUpperInvariant();
         if (asin.Length != 10)
-            throw new ProviderException("audible", "invalid_identifier", "Audible ASIN must contain exactly 10 letters or digits");
+            throw new ProviderException(Id, "invalid_identifier", "Audible ASIN must contain exactly 10 letters or digits");
         return asin;
     }
 

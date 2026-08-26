@@ -61,6 +61,7 @@ internal static class LismioIdentifierExtractor
         if (productIndex < 0)
             return null;
         return segments.Skip(productIndex + 1)
+            .Reverse()
             .Select(Uri.UnescapeDataString)
             .Select(TextNormalizer.Identifier)
             .FirstOrDefault(value => value.Length == 10 && value.All(char.IsLetterOrDigit));
@@ -90,7 +91,8 @@ internal static class LismioIdentifierExtractor
 
     private static bool IsValidIsbn13(string value)
     {
-        if (value.Length != 13 || !value.All(char.IsDigit) || !value.StartsWith("978", StringComparison.Ordinal))
+        if (value.Length != 13 || !value.All(char.IsDigit)
+            || !(value.StartsWith("978", StringComparison.Ordinal) || value.StartsWith("979", StringComparison.Ordinal)))
             return false;
         var sum = value.Take(12).Select((character, index) => (character - '0') * (index % 2 == 0 ? 1 : 3)).Sum();
         return (10 - sum % 10) % 10 == value[12] - '0';
@@ -98,7 +100,7 @@ internal static class LismioIdentifierExtractor
 
     private static string? ToIsbn10(string isbn13)
     {
-        if (!IsValidIsbn13(isbn13))
+        if (!IsValidIsbn13(isbn13) || !isbn13.StartsWith("978", StringComparison.Ordinal))
             return null;
         var core = isbn13.Substring(3, 9);
         var sum = core.Select((character, index) => (character - '0') * (10 - index)).Sum();

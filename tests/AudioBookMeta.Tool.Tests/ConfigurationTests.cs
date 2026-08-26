@@ -120,6 +120,19 @@ public sealed class ConfigurationTests
         Assert.Equal("es", config.Providers["audible-es"].Region);
     }
 
+    [Fact]
+    public void Audible_requires_an_explicit_supported_marketplace()
+    {
+        var path = TemporaryConfig("""
+            version = 1
+            [providers.audible]
+            type = "audible"
+            base_url = "https://api.audible.de"
+            """);
+
+        Assert.Throws<AudiobookMetaException>(() => new ConfigLoader(new ConfigPathResolver()).Load(path));
+    }
+
     [Theory]
     [InlineData("-")]
     [InlineData("-de")]
