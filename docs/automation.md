@@ -22,6 +22,8 @@ Within schema v1, new optional fields may be added, but existing fields are not 
 
 Search results include an optional `lookup_strategy` describing how a provider found the record. Each `provider_status` includes `lookup_strategies`, including attempted strategies that returned no candidates. Libex values include `sku`, `quick_search`, `structured_search`, and `author_fallback`.
 
+Identifier searches expose `identifier_match_kind` (`sku_exact`, `sku_group`, `asin_exact`, or `isbn_exact`) and a `match_assessment`. A `corroborated_identifier_match` agrees with supplied metadata; `identifier_match` has no corroborating fields; `conflicting_identifier_match` is downgraded and includes structured `conflicts` with requested and candidate values. Concrete SKU matches rank above same-group regional alternatives, and the requested or configured region breaks ties between group matches.
+
 `author books --json` emits `{ "schema_version": 1, "request": {...}, "results": [...] }`. Its normalized results use the same result shape as search and get. `--raw` adds unversioned provider payloads and therefore requires `--json`.
 
 ## JSON Lines

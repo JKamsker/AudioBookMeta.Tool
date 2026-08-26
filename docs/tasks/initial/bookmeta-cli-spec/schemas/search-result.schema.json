@@ -310,6 +310,35 @@
         null
       ]
     },
+    "identifier_match_kind": {
+      "enum": [
+        "sku_exact",
+        "sku_group",
+        "asin_exact",
+        "isbn_exact"
+      ]
+    },
+    "match_assessment": {
+      "enum": [
+        "identifier_match",
+        "corroborated_identifier_match",
+        "conflicting_identifier_match"
+      ]
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["field", "requested", "candidate", "reason"],
+        "properties": {
+          "field": { "type": "string" },
+          "requested": { "type": "string" },
+          "candidate": { "type": "string" },
+          "reason": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
     "work_cluster_id": {
       "type": [
         "string",

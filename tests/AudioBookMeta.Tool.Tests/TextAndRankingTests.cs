@@ -159,6 +159,66 @@ public sealed class TextAndRankingTests
         Assert.Equal(98, german.Score);
     }
 
+    [Fact]
+    public void Contaminated_sku_is_downgraded_and_exposes_structured_conflicts()
+    {
+        var contaminated = Result("Das Recht des Stärkeren", "Hendrik Falkenberg") with
+        {
+            Narrators = ["Oliver Erwin Schönfeld"],
+            DurationSeconds = 39840,
+            Identifiers = new Identifiers
+            {
+                Other = new Dictionary<string, object> { ["sku"] = "BK_ADKO_004186" }
+            }
+        };
+
+        _ = new ResultRanker().Rank(new SearchRequest
+        {
+            Title = "GIER - Wie weit würdest du gehen?",
+            Author = "Marc Elsberg",
+            Narrator = "Dietmar Wunder",
+            Sku = "BK_ADKO_004186",
+            DurationSeconds = 35235,
+            DurationToleranceSeconds = 90
+        }, [contaminated]);
+
+        Assert.Equal("sku_exact", contaminated.IdentifierMatchKind);
+        Assert.Equal("conflicting_identifier_match", contaminated.MatchAssessment);
+        Assert.Equal("low", contaminated.Confidence);
+        Assert.True(contaminated.Score <= 60);
+        Assert.Equal(["title", "author", "narrator", "duration"], contaminated.Conflicts.Select(conflict => conflict.Field));
+        Assert.Contains(contaminated.Warnings, warning => warning.Contains("identifier matched", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Corroborated_sku_remains_an_exact_match()
+    {
+        var valid = Result("Bertrams Hotel", "Agatha Christie") with
+        {
+            Narrators = ["Gabriele Blum"],
+            DurationSeconds = 22620,
+            Identifiers = new Identifiers
+            {
+                Other = new Dictionary<string, object> { ["sku"] = "BK_HOER_002668" }
+            }
+        };
+
+        _ = new ResultRanker().Rank(new SearchRequest
+        {
+            Title = "Bertrams Hotel",
+            Author = "Agatha Christie",
+            Narrator = "Gabriele Blum",
+            Sku = "BK_HOER_002668",
+            DurationSeconds = 22642,
+            DurationToleranceSeconds = 90
+        }, [valid]);
+
+        Assert.Equal(100, valid.Score);
+        Assert.Equal("exact", valid.Confidence);
+        Assert.Equal("corroborated_identifier_match", valid.MatchAssessment);
+        Assert.Empty(valid.Conflicts);
+    }
+
     private static SearchResult GroupMatch(string region) => Result($"{region} edition", "Someone") with
     {
         ProviderRecordId = region,

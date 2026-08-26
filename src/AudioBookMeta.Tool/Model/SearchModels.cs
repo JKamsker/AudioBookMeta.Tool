@@ -56,6 +56,14 @@ public sealed record Identifiers
     public Dictionary<string, object> Other { get; init; } = [];
 }
 
+public sealed record EvidenceConflict
+{
+    public required string Field { get; init; }
+    public required string Requested { get; init; }
+    public required string Candidate { get; init; }
+    public required string Reason { get; init; }
+}
+
 public sealed record SearchResult
 {
     public required string Provider { get; init; }
@@ -97,6 +105,9 @@ public sealed record SearchResult
     public string? Confidence { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? IdentifierMatchKind { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? MatchAssessment { get; set; }
+    public List<EvidenceConflict> Conflicts { get; init; } = [];
     public string? WorkClusterId { get; set; }
     public string? EditionClusterId { get; set; }
     public List<string> Warnings { get; init; } = [];

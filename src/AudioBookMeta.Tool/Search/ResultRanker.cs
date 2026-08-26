@@ -48,6 +48,7 @@ public sealed class ResultRanker
                 : skuGroupMatch ? $"SKU group match{(preferredGroupMatch ? $" in preferred region {preferredRegion}" : string.Empty)}"
                 : "exact match";
             AddDurationEvidence(request, result);
+            AssessIdentifierEvidence(request, result);
             return;
         }
 
@@ -127,6 +128,77 @@ public sealed class ResultRanker
         var difference = Math.Abs(requested - actual);
         var inside = difference <= request.DurationToleranceSeconds;
         result.ScoreEvidence["duration"] = $"{difference}s difference; {(inside ? "inside" : "outside")} {request.DurationToleranceSeconds}s tolerance";
+    }
+
+    private static void AssessIdentifierEvidence(SearchRequest request, SearchResult result)
+    {
+        var corroborations = 0;
+        AssessText("title", request.Title, result.Title, .45, .80, result, ref corroborations);
+        AssessText("author", request.Author, string.Join(", ", result.Authors), .35, .75, result, ref corroborations);
+        AssessText("narrator", request.Narrator, string.Join(", ", result.Narrators), .35, .75, result, ref corroborations);
+        AssessText("publisher", request.Publisher, result.Publisher, .35, .75, result, ref corroborations);
+
+        if (request.DurationSeconds is { } requestedDuration && result.DurationSeconds is { } candidateDuration)
+        {
+            var difference = Math.Abs(requestedDuration - candidateDuration);
+            var conflictThreshold = Math.Max(request.DurationToleranceSeconds * 3, (long)Math.Ceiling(requestedDuration * .10));
+            if (difference > conflictThreshold)
+            {
+                AddConflict(result, "duration", $"{requestedDuration}s", $"{candidateDuration}s",
+                    $"difference of {difference}s exceeds the conflict threshold of {conflictThreshold}s");
+            }
+            else if (difference <= request.DurationToleranceSeconds)
+            {
+                corroborations++;
+            }
+        }
+
+        if (result.Conflicts.Count > 0)
+        {
+            result.MatchAssessment = "conflicting_identifier_match";
+            result.Score = Math.Min(result.Score, result.Conflicts.Count >= 2 ? 60 : 85);
+            result.Confidence = result.Conflicts.Count >= 2 ? "low" : "medium";
+            result.Warnings.Add($"identifier matched, but {result.Conflicts.Count} supplied metadata field(s) conflict");
+        }
+        else
+        {
+            result.MatchAssessment = corroborations > 0 ? "corroborated_identifier_match" : "identifier_match";
+        }
+    }
+
+    private static void AssessText(
+        string field,
+        string? requested,
+        string? candidate,
+        double conflictThreshold,
+        double corroborationThreshold,
+        SearchResult result,
+        ref int corroborations)
+    {
+        if (string.IsNullOrWhiteSpace(requested) || string.IsNullOrWhiteSpace(candidate))
+            return;
+
+        var similarity = TextSimilarity.Score(requested, candidate, exact: false);
+        if (similarity < conflictThreshold)
+        {
+            AddConflict(result, field, requested, candidate, $"text similarity {similarity:0.00} is below {conflictThreshold:0.00}");
+        }
+        else if (similarity >= corroborationThreshold)
+        {
+            corroborations++;
+        }
+    }
+
+    private static void AddConflict(SearchResult result, string field, string requested, string candidate, string reason)
+    {
+        result.Conflicts.Add(new EvidenceConflict
+        {
+            Field = field,
+            Requested = requested,
+            Candidate = candidate,
+            Reason = reason
+        });
+        result.ScoreEvidence[$"conflict:{field}"] = reason;
     }
 
     private static IEnumerable<string> IdentifierValues(Dictionary<string, object> other, params string[] names)
