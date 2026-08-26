@@ -80,6 +80,8 @@ dotnet audiobookmeta search "Dune" --json --strict
 
 Provider-native no-result responses, including Libex HTTP 404 responses from search and author fallback endpoints, produce provider status `empty` and exit code `0`. Connectivity, authentication, rate-limit, malformed-response, and server errors remain provider failures.
 
+Lismio health testing validates the stable detail route for known catalogue record `23709`; it does not require an arbitrary search query to return cards. Empty searches therefore remain distinct from malformed detail pages and connectivity failures.
+
 ## Errors and diagnostics
 
 Fatal errors leave standard output empty, write a concise message to standard error, and return a non-zero exit code. Expected usage and configuration errors also include a suggested recovery action.

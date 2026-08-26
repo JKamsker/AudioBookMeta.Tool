@@ -10,6 +10,7 @@ namespace AudiobookMeta.Tool.Providers.Lismio;
 public sealed class LismioProvider(ProviderConfig config, ProviderTransport transport) : IMetadataProvider
 {
     private const int DetailConcurrency = 4;
+    private const long HealthProbeRecordId = 23709;
     private readonly LismioModelMapper mapper = new(config.Id);
 
     public string Id => config.Id;
@@ -84,17 +85,18 @@ public sealed class LismioProvider(ProviderConfig config, ProviderTransport tran
     {
         var timer = System.Diagnostics.Stopwatch.StartNew();
         var locale = Locale(config.Region);
-        var uri = SearchUri("a", locale, 1);
+        var uri = DetailUri(HealthProbeRecordId, locale);
         var response = await transport.GetHtmlAsync(config, uri, cancellationToken);
         try
         {
-            _ = LismioPageParser.ParsePage(Encoding.UTF8.GetString(response.Content), response.Uri, 1, 1);
+            _ = LismioPageParser.ParseAudiobook(
+                Encoding.UTF8.GetString(response.Content), response.Uri, HealthProbeRecordId);
         }
         catch (InvalidDataException exception)
         {
             throw new ProviderException(config.Id, "invalid_response", exception.Message, inner: exception);
         }
-        return new(config.Id, "ok", timer.ElapsedMilliseconds, "Lismio catalogue search is reachable and parseable");
+        return new(config.Id, "ok", timer.ElapsedMilliseconds, $"Lismio detail record {HealthProbeRecordId} is reachable and parseable");
     }
 
     private async Task HydrateAsync(
