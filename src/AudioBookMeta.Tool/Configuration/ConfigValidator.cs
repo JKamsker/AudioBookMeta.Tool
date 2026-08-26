@@ -5,7 +5,7 @@ namespace AudiobookMeta.Tool.Configuration;
 
 public static class ConfigValidator
 {
-    private static readonly HashSet<string> AdapterTypes = new(StringComparer.OrdinalIgnoreCase) { "abs", "libex", "audiosilo", "lismio" };
+    private static readonly HashSet<string> AdapterTypes = new(StringComparer.OrdinalIgnoreCase) { "abs", "libex", "audiosilo", "audible", "lismio" };
 
     public static IReadOnlyList<string> Validate(AudiobookMetaConfig config, bool resolveSecrets)
     {
@@ -32,6 +32,9 @@ public static class ConfigValidator
             if (provider.Type.Equals("lismio", StringComparison.OrdinalIgnoreCase)
                 && provider.Region is not null && !LismioLocale.TryNormalize(provider.Region, out _))
                 errors.Add($"provider '{provider.Id}' region must be a Lismio locale such as 'de'");
+            if (provider.Type.Equals("audible", StringComparison.OrdinalIgnoreCase)
+                && !AudiobookMeta.Tool.Providers.Audible.AudibleMarketplace.TryNormalize(provider.Region, out _))
+                errors.Add($"provider '{provider.Id}' region must be a supported Audible marketplace such as 'de', 'uk', 'es', or 'us'");
             if (provider.Auth is not null && !SecretResolver.HasValidSyntax(provider.Auth))
                 errors.Add($"provider '{provider.Id}' has invalid auth secret reference syntax");
             if (resolveSecrets && provider.Auth is not null)

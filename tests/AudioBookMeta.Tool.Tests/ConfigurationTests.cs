@@ -103,6 +103,23 @@ public sealed class ConfigurationTests
         Assert.Equal("lismio", config.Providers["lismio"].Type);
     }
 
+    [Fact]
+    public void Audible_is_a_supported_provider_type_with_a_valid_marketplace()
+    {
+        var path = TemporaryConfig("""
+            version = 1
+            [providers.audible-es]
+            type = "audible"
+            base_url = "https://api.audible.es"
+            region = "es"
+            """);
+
+        var config = new ConfigLoader(new ConfigPathResolver()).Load(path);
+
+        Assert.Equal("audible", config.Providers["audible-es"].Type);
+        Assert.Equal("es", config.Providers["audible-es"].Region);
+    }
+
     [Theory]
     [InlineData("-")]
     [InlineData("-de")]

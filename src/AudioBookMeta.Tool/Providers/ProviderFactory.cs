@@ -9,6 +9,7 @@ public sealed class ProviderFactory(ProviderTransport transport, KiotaClientFact
         "abs" => new Abs.AbsProvider(config, transport),
         "libex" => new Libex.LibexProvider(config, transport, kiota),
         "audiosilo" => new AudioSilo.AudioSiloProvider(config, transport, kiota),
+        "audible" => new Audible.AudibleProvider(config, transport),
         "lismio" => new Lismio.LismioProvider(config, transport),
         _ => throw new InvalidOperationException($"Unsupported adapter type: {config.Type}")
     };

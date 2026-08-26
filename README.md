@@ -141,6 +141,7 @@ Search only selected providers:
 
 ```sh
 dotnet audiobookmeta search "Dune" -p libex -p audiosilo -p lismio
+dotnet audiobookmeta search "Dune" --group audible --editions --json
 dotnet audiobookmeta search "Dune" --group audiobook
 dotnet audiobookmeta search "Dune" --group shop-links --shop-links --limit-per-provider 3
 dotnet audiobookmeta search "Dune" --provider libex --page 2
@@ -172,6 +173,7 @@ dotnet audiobookmeta get libex:B08G9PRS1K
 dotnet audiobookmeta get libex:B08G9PRS1K --region uk
 dotnet audiobookmeta get audiosilo:work/project-hail-mary
 dotnet audiobookmeta get lismio:38299
+dotnet audiobookmeta get audible-de:B08G9PRS1K
 ```
 
 Libex ASINs are normalized to uppercase and must contain exactly ten letters or digits. Human output includes authors, narrators, series, duration, release details, rating, availability, regions, links, and a cleaned description when Libex supplies them.

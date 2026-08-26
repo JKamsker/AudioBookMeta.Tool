@@ -1,8 +1,8 @@
 # Configuration and providers
 
 `dotnet audiobookmeta` uses a TOML file that describes metadata providers and search defaults. On first
-use of the platform-default path, it creates a ready-to-use file with the public Libex, AudioSilo, and
-Lismio providers. Only Libex is selected by default. You can edit the file directly or manage supported
+use of the platform-default path, it creates a ready-to-use file with the public Libex, AudioSilo, Lismio,
+and Audible Germany providers. Only Libex is selected by default. You can edit the file directly or manage supported
 values through the `config` commands.
 
 ## Configuration location
@@ -107,12 +107,46 @@ region = "de"
 priority = 90
 groups = ["shop-links"]
 
+[providers.audible-de]
+type = "audible"
+base_url = "https://api.audible.de"
+enabled = true
+region = "de"
+priority = 85
+groups = ["audible"]
+
 [groups]
 default = ["libex"]
 audiobook = ["libex", "audiosilo"]
 open-data = ["audiosilo"]
 shop-links = ["lismio"]
+audible = ["audible-de"]
 ```
+
+### Audible marketplaces
+
+The `audible` adapter uses Audible's read-only public catalogue JSON endpoints for keyword search and direct ASIN retrieval. Configure one provider instance per marketplace and group them when you want cross-market discovery:
+
+```toml
+[providers.audible-es]
+type = "audible"
+base_url = "https://api.audible.es"
+region = "es"
+groups = ["audible"]
+
+[providers.audible-uk]
+type = "audible"
+base_url = "https://api.audible.co.uk"
+region = "uk"
+groups = ["audible"]
+
+[groups]
+audible = ["audible-de", "audible-es", "audible-uk"]
+```
+
+Search all configured marketplaces with `--group audible`, or select one with `--provider audible-es`. Supported marketplace codes are `au`, `br`, `ca`, `de`, `es`, `fr`, `in`, `it`, `jp`, `uk`, and `us`. Results retain regional ASINs separately and include marketplace provenance in `regions` and `identifier_provenance`.
+
+The catalogue API is a public Audible application endpoint but is not a documented compatibility contract for third-party integrations. Its use remains subject to Audible's applicable terms. The adapter is isolated so response changes can be handled without affecting other providers; malformed payloads are reported separately from valid empty/de-listed results.
 
 Provider IDs such as `libex`, `audiosilo`, and `lismio` are the names used by `--provider`, `providers show`, and `get`.
 

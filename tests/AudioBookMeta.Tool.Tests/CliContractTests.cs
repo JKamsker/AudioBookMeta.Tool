@@ -135,6 +135,8 @@ public sealed class CliContractTests
         Assert.Contains("timeout = \"10s\"", content, StringComparison.Ordinal);
         Assert.Contains("region = \"de\"", content, StringComparison.Ordinal);
         Assert.Contains("shop-links = [\"lismio\"]", content, StringComparison.Ordinal);
+        Assert.Contains("[providers.audible-de]", content, StringComparison.Ordinal);
+        Assert.Contains("audible = [\"audible-de\"]", content, StringComparison.Ordinal);
     }
 
     [Fact]
