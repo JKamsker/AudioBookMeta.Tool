@@ -35,6 +35,31 @@ Resolution order is:
 
 Command flags override matching values loaded from the file. Missing settings use built-in defaults.
 
+## Inspect and adopt changed generated defaults
+
+Generated files record a `template_version` separately from the configuration schema `version`. Upgrades never rewrite an existing file automatically. Inspect differences with:
+
+```sh
+dotnet audiobookmeta config status
+dotnet audiobookmeta config migrate --dry-run
+```
+
+`config status` classifies a value as an old generated-default candidate only when it matches a known historical template value. Other differences are classified as custom and preserved. The migration preview lists exact `KEY: OLD -> NEW` changes and does not write the file.
+
+Adopt every recognized old generated default, while retaining custom values, with:
+
+```sh
+dotnet audiobookmeta config migrate --all
+```
+
+Adopt one reported default explicitly—even when it is classified as custom—with:
+
+```sh
+dotnet audiobookmeta config migrate --apply providers.libex.region
+```
+
+`--apply` is repeatable. A migration updates `template_version` atomically, is idempotent, and preserves custom providers, groups, credentials, and unrelated settings. The first tracked migration recognizes the old generated `providers.libex.region = "us"` value and offers the current `"de"` default; an intentional non-default marketplace remains untouched unless its exact key is selected with `--apply`.
+
 ## Configure through the CLI
 
 Read and update values with dot-separated keys:

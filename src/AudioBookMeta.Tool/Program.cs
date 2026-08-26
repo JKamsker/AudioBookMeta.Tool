@@ -25,6 +25,7 @@ services.AddSingleton(new AppConsole(ansiConsole));
 services.AddSingleton<ConfigPathResolver>();
 services.AddSingleton<ConfigLoader>();
 services.AddSingleton<ConfigDocumentStore>();
+services.AddSingleton<ConfigMigrationService>();
 services.AddSingleton<ProviderSelector>();
 services.AddSingleton<ProviderFactory>();
 services.AddSingleton<ProviderTransport>();
@@ -87,6 +88,11 @@ app.Configure(config =>
             .WithDescription("Remove one configuration value or provider.")
             .WithExample("config", "unset", "providers.catalog", "--dry-run");
         branch.AddCommand<ConfigValidateCommand>("validate").WithDescription("Validate structure, targets, groups, and secret references.");
+        branch.AddCommand<ConfigStatusCommand>("status").WithDescription("Compare this file with current generated defaults without changing it.");
+        branch.AddCommand<ConfigMigrateCommand>("migrate")
+            .WithDescription("Explicitly adopt changed generated defaults; supports selective and dry-run modes.")
+            .WithExample("config", "migrate", "--dry-run")
+            .WithExample("config", "migrate", "--apply", "providers.libex.region");
     });
     config.AddCommand<CompletionCommand>("completion").WithDescription("Generate shell completion setup for bash, zsh, fish, or PowerShell.");
     config.SetExceptionHandler((exception, resolver) =>

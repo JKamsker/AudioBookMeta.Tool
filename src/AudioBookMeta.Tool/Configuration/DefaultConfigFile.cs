@@ -4,8 +4,10 @@ namespace AudiobookMeta.Tool.Configuration;
 
 public static class DefaultConfigFile
 {
+    public const int TemplateVersion = 2;
     public const string Content = """
         version = 1
+        template_version = 2
         default_group = "default"
 
         [search]

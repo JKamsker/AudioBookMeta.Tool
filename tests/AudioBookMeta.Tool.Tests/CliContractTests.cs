@@ -137,6 +137,7 @@ public sealed class CliContractTests
         Assert.Contains("shop-links = [\"lismio\"]", content, StringComparison.Ordinal);
         Assert.Contains("[providers.audible-de]", content, StringComparison.Ordinal);
         Assert.Contains("audible = [\"audible-de\"]", content, StringComparison.Ordinal);
+        Assert.Contains("template_version = 2", content, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -190,6 +191,48 @@ public sealed class CliContractTests
         var confirmed = await RunAsync("config", "unset", "providers.goodreads", "--config", path, "--yes");
         Assert.Equal(0, confirmed.ExitCode);
         Assert.DoesNotContain("[providers.goodreads]", await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Config_migration_requires_an_explicit_preview_or_selection()
+    {
+        var result = await RunAsync("config", "migrate", "--config", SampleConfig());
+
+        Assert.Equal(2, result.ExitCode);
+        Assert.Empty(result.Stdout);
+        Assert.Contains("requires --dry-run", result.Stderr, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Config_status_and_migration_dry_run_have_versioned_json_contracts()
+    {
+        var path = Path.Combine(TemporaryDirectory(), "legacy.toml");
+        await File.WriteAllTextAsync(path, """
+            version = 1
+            [providers.libex]
+            type = "libex"
+            base_url = "https://libexdb.com"
+            region = "us"
+            """, TestContext.Current.CancellationToken);
+
+        var status = await RunAsync("config", "status", "--config", path, "--json");
+        Assert.Equal(0, status.ExitCode);
+        using (var json = JsonDocument.Parse(status.Stdout))
+        {
+            Assert.Equal(1, json.RootElement.GetProperty("schema_version").GetInt32());
+            var difference = Assert.Single(json.RootElement.GetProperty("differences").EnumerateArray());
+            Assert.Equal("providers.libex.region", difference.GetProperty("key").GetString());
+            Assert.True(difference.GetProperty("generated_default_candidate").GetBoolean());
+        }
+
+        var preview = await RunAsync("config", "migrate", "--dry-run", "--config", path, "--json");
+        Assert.Equal(0, preview.ExitCode);
+        using (var json = JsonDocument.Parse(preview.Stdout))
+        {
+            Assert.True(json.RootElement.GetProperty("dry_run").GetBoolean());
+            Assert.Equal(2, json.RootElement.GetProperty("changes").GetArrayLength());
+        }
+        Assert.DoesNotContain("template_version", await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken), StringComparison.Ordinal);
     }
 
     [Fact]

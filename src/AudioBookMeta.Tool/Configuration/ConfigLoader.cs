@@ -37,6 +37,7 @@ public sealed class ConfigLoader(ConfigPathResolver paths)
         {
             SourcePath = path,
             Version = Integer(root, "version", 1),
+            TemplateVersion = root.ContainsKey("template_version") ? Integer(root, "template_version", 0) : null,
             DefaultGroup = String(root, "default_group"),
             Search = ParseSearch(Table(root, "search")),
             Providers = ParseProviders(Table(root, "providers")),
