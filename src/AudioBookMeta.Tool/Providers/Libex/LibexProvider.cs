@@ -10,7 +10,7 @@ public sealed class LibexProvider(ProviderConfig config, ProviderTransport trans
     : IMetadataProvider, IAuthorBooksProvider
 {
     private readonly AudiobookMeta.Tool.Generated.Libex.LibexApiClient client = kiota.CreateLibex(config);
-    private readonly LibexModelMapper mapper = new(config.Id);
+    private readonly LibexModelMapper mapper = new(config.Id, config.Region);
     public string Id => config.Id;
     public string AdapterType => "libex";
     public ProviderCapabilities Capabilities { get; } = CapabilityCatalog.Create(config,
@@ -296,6 +296,7 @@ public sealed class LibexProvider(ProviderConfig config, ProviderTransport trans
         {
             Provider = Id,
             ProviderType = AdapterType,
+            ProviderRegion = config.Region,
             ProviderRecordId = asin,
             Title = title,
             Subtitle = JsonFields.String(item, "subtitle"),

@@ -21,18 +21,32 @@ public sealed class ResultRanker
         var requestedSku = TextNormalizer.Identifier(request.Sku);
         var asins = result.Identifiers.Asin.Select(TextNormalizer.Identifier).ToList();
         var isbns = result.Identifiers.Isbn10.Concat(result.Identifiers.Isbn13).Select(TextNormalizer.Identifier).ToList();
-        var skus = IdentifierValues(result.Identifiers.Other, "sku", "skuGroup", "ufid").Select(TextNormalizer.Identifier).Where(value => value.Length > 0).ToList();
+        var concreteSkus = IdentifierValues(result.Identifiers.Other, "sku", "ufid").Select(TextNormalizer.Identifier).Where(value => value.Length > 0).ToList();
+        var skuGroups = IdentifierValues(result.Identifiers.Other, "skuGroup").Select(TextNormalizer.Identifier).Where(value => value.Length > 0).ToList();
+        var exactSkuMatch = requestedSku.Length > 0 && concreteSkus.Contains(requestedSku);
+        var skuGroupMatch = requestedSku.Length > 0 && skuGroups.Contains(requestedSku);
         var identifierMatch = requestedAsin.Length > 0 && asins.Contains(requestedAsin)
             || requestedIsbn.Length > 0 && isbns.Contains(requestedIsbn)
-            || requestedSku.Length > 0 && skus.Contains(requestedSku);
+            || exactSkuMatch
+            || skuGroupMatch;
         var identifierConflict = requestedAsin.Length > 0 && asins.Count > 0 && !asins.Contains(requestedAsin)
             || requestedIsbn.Length > 0 && isbns.Count > 0 && !isbns.Contains(requestedIsbn)
-            || requestedSku.Length > 0 && skus.Count > 0 && !skus.Contains(requestedSku);
+            || requestedSku.Length > 0 && (concreteSkus.Count > 0 || skuGroups.Count > 0) && !exactSkuMatch && !skuGroupMatch;
         if (identifierMatch)
         {
-            result.Score = 100;
-            result.Confidence = "exact";
-            result.ScoreEvidence["identifier"] = requestedSku.Length > 0 && skus.Contains(requestedSku) ? "exact SKU/UFID match" : "exact match";
+            var preferredRegion = request.Region ?? result.ProviderRegion;
+            var preferredGroupMatch = skuGroupMatch
+                && !string.IsNullOrWhiteSpace(preferredRegion)
+                && result.Regions.Contains(preferredRegion, StringComparer.OrdinalIgnoreCase);
+            result.IdentifierMatchKind = exactSkuMatch ? "sku_exact"
+                : skuGroupMatch ? "sku_group"
+                : requestedAsin.Length > 0 ? "asin_exact"
+                : "isbn_exact";
+            result.Score = exactSkuMatch || !skuGroupMatch ? 100 : preferredGroupMatch ? 98 : 96;
+            result.Confidence = exactSkuMatch || !skuGroupMatch ? "exact" : "high";
+            result.ScoreEvidence["identifier"] = exactSkuMatch ? "exact concrete SKU/UFID match"
+                : skuGroupMatch ? $"SKU group match{(preferredGroupMatch ? $" in preferred region {preferredRegion}" : string.Empty)}"
+                : "exact match";
             AddDurationEvidence(request, result);
             return;
         }

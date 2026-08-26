@@ -95,6 +95,8 @@ public sealed record SearchResult
     public List<CollectionEntry> Collections { get; init; } = [];
     public double Score { get; set; }
     public string? Confidence { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? IdentifierMatchKind { get; set; }
     public string? WorkClusterId { get; set; }
     public string? EditionClusterId { get; set; }
     public List<string> Warnings { get; init; } = [];
@@ -104,6 +106,9 @@ public sealed record SearchResult
 
     [JsonIgnore]
     public Dictionary<string, string> ScoreEvidence { get; } = [];
+
+    [JsonIgnore]
+    public string? ProviderRegion { get; init; }
 }
 
 public sealed record ProviderStatus

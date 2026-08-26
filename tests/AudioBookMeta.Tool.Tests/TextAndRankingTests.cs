@@ -87,26 +87,91 @@ public sealed class TextAndRankingTests
     }
 
     [Fact]
-    public void Exact_sku_match_is_decisive_and_accepts_sku_group()
+    public void Exact_sku_match_ranks_above_a_regional_sku_group_match()
     {
-        var match = Result("Unrelated title", "Someone") with
+        var groupMatch = Result("Regional edition", "Someone") with
         {
-            Identifiers = new Identifiers { Other = new Dictionary<string, object> { ["skuGroup"] = "BK_HOER_002668" } }
+            ProviderRecordId = "regional",
+            Regions = ["ca"],
+            Identifiers = new Identifiers
+            {
+                Other = new Dictionary<string, object>
+                {
+                    ["sku"] = "BK_HOER_002668CA",
+                    ["skuGroup"] = "BK_HOER_002668"
+                }
+            }
         };
-        var text = Result("Bertrams Hotel", "Agatha Christie");
+        var exactMatch = Result("Requested edition", "Someone") with
+        {
+            ProviderRecordId = "exact",
+            Regions = ["us"],
+            Identifiers = new Identifiers
+            {
+                Other = new Dictionary<string, object>
+                {
+                    ["sku"] = "BK_HOER_002668",
+                    ["skuGroup"] = "BK_HOER_002668"
+                }
+            }
+        };
 
         var ranked = new ResultRanker().Rank(new SearchRequest
         {
-            Title = "Bertrams Hotel",
-            Author = "Agatha Christie",
             Sku = "bk_hoer_002668"
-        }, [text, match]);
+        }, [groupMatch, exactMatch]);
 
-        Assert.Same(match, ranked[0]);
-        Assert.Equal(100, match.Score);
-        Assert.Equal("exact", match.Confidence);
-        Assert.Equal("exact SKU/UFID match", match.ScoreEvidence["identifier"]);
+        Assert.Same(exactMatch, ranked[0]);
+        Assert.Equal(100, exactMatch.Score);
+        Assert.Equal("sku_exact", exactMatch.IdentifierMatchKind);
+        Assert.Equal(96, groupMatch.Score);
+        Assert.Equal("sku_group", groupMatch.IdentifierMatchKind);
+        Assert.Equal("high", groupMatch.Confidence);
     }
+
+    [Fact]
+    public void Requested_region_breaks_ties_between_sku_group_matches()
+    {
+        var german = GroupMatch("de");
+        var canadian = GroupMatch("ca");
+
+        var ranked = new ResultRanker().Rank(new SearchRequest
+        {
+            Sku = "BK_ADBL_054464",
+            Region = "de"
+        }, [canadian, german]);
+
+        Assert.Same(german, ranked[0]);
+        Assert.Equal(98, german.Score);
+        Assert.Equal(96, canadian.Score);
+        Assert.Contains("preferred region de", german.ScoreEvidence["identifier"], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Configured_provider_region_breaks_ties_between_sku_group_matches()
+    {
+        var german = GroupMatch("de") with { ProviderRegion = "de" };
+        var canadian = GroupMatch("ca") with { ProviderRegion = "de" };
+
+        var ranked = new ResultRanker().Rank(new SearchRequest { Sku = "BK_ADBL_054464" }, [canadian, german]);
+
+        Assert.Same(german, ranked[0]);
+        Assert.Equal(98, german.Score);
+    }
+
+    private static SearchResult GroupMatch(string region) => Result($"{region} edition", "Someone") with
+    {
+        ProviderRecordId = region,
+        Regions = [region],
+        Identifiers = new Identifiers
+        {
+            Other = new Dictionary<string, object>
+            {
+                ["sku"] = $"BK_ADBL_054464{region.ToUpperInvariant()}",
+                ["skuGroup"] = "BK_ADBL_054464"
+            }
+        }
+    };
 
     private static SearchResult Result(string title, string author) => new()
     {
