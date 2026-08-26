@@ -21,19 +21,34 @@ public sealed class ResultRanker
         var requestedSku = TextNormalizer.Identifier(request.Sku);
         var asins = result.Identifiers.Asin.Select(TextNormalizer.Identifier).ToList();
         var isbns = result.Identifiers.Isbn10.Concat(result.Identifiers.Isbn13).Select(TextNormalizer.Identifier).ToList();
-        var skus = IdentifierValues(result.Identifiers.Other, "sku", "skuGroup", "ufid").Select(TextNormalizer.Identifier).Where(value => value.Length > 0).ToList();
+        var concreteSkus = IdentifierValues(result.Identifiers.Other, "sku", "ufid").Select(TextNormalizer.Identifier).Where(value => value.Length > 0).ToList();
+        var skuGroups = IdentifierValues(result.Identifiers.Other, "skuGroup").Select(TextNormalizer.Identifier).Where(value => value.Length > 0).ToList();
+        var exactSkuMatch = requestedSku.Length > 0 && concreteSkus.Contains(requestedSku);
+        var skuGroupMatch = requestedSku.Length > 0 && skuGroups.Contains(requestedSku);
         var identifierMatch = requestedAsin.Length > 0 && asins.Contains(requestedAsin)
             || requestedIsbn.Length > 0 && isbns.Contains(requestedIsbn)
-            || requestedSku.Length > 0 && skus.Contains(requestedSku);
+            || exactSkuMatch
+            || skuGroupMatch;
         var identifierConflict = requestedAsin.Length > 0 && asins.Count > 0 && !asins.Contains(requestedAsin)
             || requestedIsbn.Length > 0 && isbns.Count > 0 && !isbns.Contains(requestedIsbn)
-            || requestedSku.Length > 0 && skus.Count > 0 && !skus.Contains(requestedSku);
+            || requestedSku.Length > 0 && (concreteSkus.Count > 0 || skuGroups.Count > 0) && !exactSkuMatch && !skuGroupMatch;
         if (identifierMatch)
         {
-            result.Score = 100;
-            result.Confidence = "exact";
-            result.ScoreEvidence["identifier"] = requestedSku.Length > 0 && skus.Contains(requestedSku) ? "exact SKU/UFID match" : "exact match";
+            var preferredRegion = request.Region ?? result.ProviderRegion;
+            var preferredGroupMatch = skuGroupMatch
+                && !string.IsNullOrWhiteSpace(preferredRegion)
+                && result.Regions.Contains(preferredRegion, StringComparer.OrdinalIgnoreCase);
+            result.IdentifierMatchKind = exactSkuMatch ? "sku_exact"
+                : skuGroupMatch ? "sku_group"
+                : requestedAsin.Length > 0 ? "asin_exact"
+                : "isbn_exact";
+            result.Score = exactSkuMatch || !skuGroupMatch ? 100 : preferredGroupMatch ? 98 : 96;
+            result.Confidence = exactSkuMatch || !skuGroupMatch ? "exact" : "high";
+            result.ScoreEvidence["identifier"] = exactSkuMatch ? "exact concrete SKU/UFID match"
+                : skuGroupMatch ? $"SKU group match{(preferredGroupMatch ? $" in preferred region {preferredRegion}" : string.Empty)}"
+                : "exact match";
             AddDurationEvidence(request, result);
+            AssessIdentifierEvidence(request, result);
             return;
         }
 
@@ -113,6 +128,77 @@ public sealed class ResultRanker
         var difference = Math.Abs(requested - actual);
         var inside = difference <= request.DurationToleranceSeconds;
         result.ScoreEvidence["duration"] = $"{difference}s difference; {(inside ? "inside" : "outside")} {request.DurationToleranceSeconds}s tolerance";
+    }
+
+    private static void AssessIdentifierEvidence(SearchRequest request, SearchResult result)
+    {
+        var corroborations = 0;
+        AssessText("title", request.Title ?? request.Query, result.Title, .45, .80, result, ref corroborations);
+        AssessText("author", request.Author, string.Join(", ", result.Authors), .35, .75, result, ref corroborations);
+        AssessText("narrator", request.Narrator, string.Join(", ", result.Narrators), .35, .75, result, ref corroborations);
+        AssessText("publisher", request.Publisher, result.Publisher, .35, .75, result, ref corroborations);
+
+        if (request.DurationSeconds is { } requestedDuration && result.DurationSeconds is { } candidateDuration)
+        {
+            var difference = Math.Abs(requestedDuration - candidateDuration);
+            var conflictThreshold = Math.Max(request.DurationToleranceSeconds * 3, (long)Math.Ceiling(requestedDuration * .10));
+            if (difference > conflictThreshold)
+            {
+                AddConflict(result, "duration", $"{requestedDuration}s", $"{candidateDuration}s",
+                    $"difference of {difference}s exceeds the conflict threshold of {conflictThreshold}s");
+            }
+            else if (difference <= request.DurationToleranceSeconds)
+            {
+                corroborations++;
+            }
+        }
+
+        if (result.Conflicts.Count > 0)
+        {
+            result.MatchAssessment = "conflicting_identifier_match";
+            result.Score = Math.Min(result.Score, result.Conflicts.Count >= 2 ? 60 : 85);
+            result.Confidence = result.Conflicts.Count >= 2 ? "low" : "medium";
+            result.Warnings.Add($"identifier matched, but {result.Conflicts.Count} supplied metadata field(s) conflict");
+        }
+        else
+        {
+            result.MatchAssessment = corroborations > 0 ? "corroborated_identifier_match" : "identifier_match";
+        }
+    }
+
+    private static void AssessText(
+        string field,
+        string? requested,
+        string? candidate,
+        double conflictThreshold,
+        double corroborationThreshold,
+        SearchResult result,
+        ref int corroborations)
+    {
+        if (string.IsNullOrWhiteSpace(requested) || string.IsNullOrWhiteSpace(candidate))
+            return;
+
+        var similarity = TextSimilarity.Score(requested, candidate, exact: false);
+        if (similarity < conflictThreshold)
+        {
+            AddConflict(result, field, requested, candidate, $"text similarity {similarity:0.00} is below {conflictThreshold:0.00}");
+        }
+        else if (similarity >= corroborationThreshold)
+        {
+            corroborations++;
+        }
+    }
+
+    private static void AddConflict(SearchResult result, string field, string requested, string candidate, string reason)
+    {
+        result.Conflicts.Add(new EvidenceConflict
+        {
+            Field = field,
+            Requested = requested,
+            Candidate = candidate,
+            Reason = reason
+        });
+        result.ScoreEvidence[$"conflict:{field}"] = reason;
     }
 
     private static IEnumerable<string> IdentifierValues(Dictionary<string, object> other, params string[] names)

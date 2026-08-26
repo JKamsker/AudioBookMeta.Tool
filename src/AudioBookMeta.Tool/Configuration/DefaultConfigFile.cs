@@ -4,8 +4,10 @@ namespace AudiobookMeta.Tool.Configuration;
 
 public static class DefaultConfigFile
 {
+    public const int TemplateVersion = 2;
     public const string Content = """
         version = 1
+        template_version = 2
         default_group = "default"
 
         [search]
@@ -40,11 +42,20 @@ public static class DefaultConfigFile
         priority = 90
         groups = ["shop-links"]
 
+        [providers.audible-de]
+        type = "audible"
+        base_url = "https://api.audible.de"
+        enabled = true
+        region = "de"
+        priority = 85
+        groups = ["audible"]
+
         [groups]
         default = ["libex"]
         audiobook = ["libex", "audiosilo"]
         open-data = ["audiosilo"]
         shop-links = ["lismio"]
+        audible = ["audible-de"]
         """;
 
     public static bool Create(string path, bool overwrite = false)

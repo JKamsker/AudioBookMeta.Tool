@@ -105,7 +105,7 @@ public sealed class ConfigDocumentStore(ConfigPathResolver paths)
     private static object ParseValue(string[] parts, string value)
     {
         ValidateLeaf(parts);
-        if (parts is ["version"])
+        if (parts is ["version"] or ["template_version"])
             return Integer(value, parts);
         if (parts is ["default_group"])
             return value;
@@ -144,7 +144,7 @@ public sealed class ConfigDocumentStore(ConfigPathResolver paths)
     {
         var valid = parts switch
         {
-            ["version"] or ["default_group"] => true,
+            ["version"] or ["template_version"] or ["default_group"] => true,
             ["search", var key] => SearchIntegers.Contains(key) || SearchDurations.Contains(key),
             ["groups", _] => true,
             ["providers", _, "groups" or "priority"] => true,

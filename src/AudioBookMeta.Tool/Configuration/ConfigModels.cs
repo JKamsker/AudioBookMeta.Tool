@@ -5,6 +5,7 @@ namespace AudiobookMeta.Tool.Configuration;
 public sealed record AudiobookMetaConfig
 {
     public int Version { get; init; } = 1;
+    public int? TemplateVersion { get; init; }
     public string? DefaultGroup { get; init; }
     public SearchConfig Search { get; init; } = new();
     public Dictionary<string, ProviderConfig> Providers { get; init; } = new(StringComparer.OrdinalIgnoreCase);

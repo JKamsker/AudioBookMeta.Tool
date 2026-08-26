@@ -30,13 +30,25 @@ public sealed class TextAndRankingTests
     }
 
     [Fact]
-    public void Exact_identifier_dominates_text_similarity()
+    public void Exact_identifier_without_conflicting_structured_metadata_is_decisive()
     {
         var identifier = Result("Unrelated title", "Someone") with { Identifiers = new Identifiers { Asin = ["B08G9PRS1K"] } };
-        var text = Result("Project Hail Mary", "Andy Weir");
-        var ranked = new ResultRanker().Rank(new SearchRequest { Query = "Project Hail Mary", Asin = "B08G9PRS1K" }, [text, identifier]);
+        var text = Result("Project Hail Mary", "Andy Weir") with { Score = 99 };
+        var ranked = new ResultRanker().Rank(new SearchRequest { Asin = "B08G9PRS1K" }, [text, identifier]);
         Assert.Same(identifier, ranked[0]);
         Assert.Equal("exact", identifier.Confidence);
+    }
+
+    [Fact]
+    public void Query_text_is_checked_for_identifier_conflicts()
+    {
+        var identifier = Result("Unrelated title", "Someone") with { Identifiers = new Identifiers { Asin = ["B08G9PRS1K"] } };
+
+        _ = new ResultRanker().Rank(new SearchRequest { Query = "Project Hail Mary", Asin = "B08G9PRS1K" }, [identifier]);
+
+        Assert.Equal("conflicting_identifier_match", identifier.MatchAssessment);
+        Assert.Contains(identifier.Conflicts, conflict => conflict.Field == "title");
+        Assert.NotEqual("exact", identifier.Confidence);
     }
 
     [Fact]
@@ -87,26 +99,151 @@ public sealed class TextAndRankingTests
     }
 
     [Fact]
-    public void Exact_sku_match_is_decisive_and_accepts_sku_group()
+    public void Exact_sku_match_ranks_above_a_regional_sku_group_match()
     {
-        var match = Result("Unrelated title", "Someone") with
+        var groupMatch = Result("Regional edition", "Someone") with
         {
-            Identifiers = new Identifiers { Other = new Dictionary<string, object> { ["skuGroup"] = "BK_HOER_002668" } }
+            ProviderRecordId = "regional",
+            Regions = ["ca"],
+            Identifiers = new Identifiers
+            {
+                Other = new Dictionary<string, object>
+                {
+                    ["sku"] = "BK_HOER_002668CA",
+                    ["skuGroup"] = "BK_HOER_002668"
+                }
+            }
         };
-        var text = Result("Bertrams Hotel", "Agatha Christie");
+        var exactMatch = Result("Requested edition", "Someone") with
+        {
+            ProviderRecordId = "exact",
+            Regions = ["us"],
+            Identifiers = new Identifiers
+            {
+                Other = new Dictionary<string, object>
+                {
+                    ["sku"] = "BK_HOER_002668",
+                    ["skuGroup"] = "BK_HOER_002668"
+                }
+            }
+        };
 
         var ranked = new ResultRanker().Rank(new SearchRequest
         {
+            Sku = "bk_hoer_002668"
+        }, [groupMatch, exactMatch]);
+
+        Assert.Same(exactMatch, ranked[0]);
+        Assert.Equal(100, exactMatch.Score);
+        Assert.Equal("sku_exact", exactMatch.IdentifierMatchKind);
+        Assert.Equal(96, groupMatch.Score);
+        Assert.Equal("sku_group", groupMatch.IdentifierMatchKind);
+        Assert.Equal("high", groupMatch.Confidence);
+    }
+
+    [Fact]
+    public void Requested_region_breaks_ties_between_sku_group_matches()
+    {
+        var german = GroupMatch("de");
+        var canadian = GroupMatch("ca");
+
+        var ranked = new ResultRanker().Rank(new SearchRequest
+        {
+            Sku = "BK_ADBL_054464",
+            Region = "de"
+        }, [canadian, german]);
+
+        Assert.Same(german, ranked[0]);
+        Assert.Equal(98, german.Score);
+        Assert.Equal(96, canadian.Score);
+        Assert.Contains("preferred region de", german.ScoreEvidence["identifier"], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Configured_provider_region_breaks_ties_between_sku_group_matches()
+    {
+        var german = GroupMatch("de") with { ProviderRegion = "de" };
+        var canadian = GroupMatch("ca") with { ProviderRegion = "de" };
+
+        var ranked = new ResultRanker().Rank(new SearchRequest { Sku = "BK_ADBL_054464" }, [canadian, german]);
+
+        Assert.Same(german, ranked[0]);
+        Assert.Equal(98, german.Score);
+    }
+
+    [Fact]
+    public void Contaminated_sku_is_downgraded_and_exposes_structured_conflicts()
+    {
+        var contaminated = Result("Das Recht des Stärkeren", "Hendrik Falkenberg") with
+        {
+            Narrators = ["Oliver Erwin Schönfeld"],
+            DurationSeconds = 39840,
+            Identifiers = new Identifiers
+            {
+                Other = new Dictionary<string, object> { ["sku"] = "BK_ADKO_004186" }
+            }
+        };
+
+        _ = new ResultRanker().Rank(new SearchRequest
+        {
+            Title = "GIER - Wie weit würdest du gehen?",
+            Author = "Marc Elsberg",
+            Narrator = "Dietmar Wunder",
+            Sku = "BK_ADKO_004186",
+            DurationSeconds = 35235,
+            DurationToleranceSeconds = 90
+        }, [contaminated]);
+
+        Assert.Equal("sku_exact", contaminated.IdentifierMatchKind);
+        Assert.Equal("conflicting_identifier_match", contaminated.MatchAssessment);
+        Assert.Equal("low", contaminated.Confidence);
+        Assert.True(contaminated.Score <= 60);
+        Assert.Equal(["title", "author", "narrator", "duration"], contaminated.Conflicts.Select(conflict => conflict.Field));
+        Assert.Contains(contaminated.Warnings, warning => warning.Contains("identifier matched", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Corroborated_sku_remains_an_exact_match()
+    {
+        var valid = Result("Bertrams Hotel", "Agatha Christie") with
+        {
+            Narrators = ["Gabriele Blum"],
+            DurationSeconds = 22620,
+            Identifiers = new Identifiers
+            {
+                Other = new Dictionary<string, object> { ["sku"] = "BK_HOER_002668" }
+            }
+        };
+
+        _ = new ResultRanker().Rank(new SearchRequest
+        {
             Title = "Bertrams Hotel",
             Author = "Agatha Christie",
-            Sku = "bk_hoer_002668"
-        }, [text, match]);
+            Narrator = "Gabriele Blum",
+            Sku = "BK_HOER_002668",
+            DurationSeconds = 22642,
+            DurationToleranceSeconds = 90
+        }, [valid]);
 
-        Assert.Same(match, ranked[0]);
-        Assert.Equal(100, match.Score);
-        Assert.Equal("exact", match.Confidence);
-        Assert.Equal("exact SKU/UFID match", match.ScoreEvidence["identifier"]);
+        Assert.Equal(100, valid.Score);
+        Assert.Equal("exact", valid.Confidence);
+        Assert.Equal("corroborated_identifier_match", valid.MatchAssessment);
+        Assert.Empty(valid.Conflicts);
     }
+
+    private static SearchResult GroupMatch(string region) => Result($"{region} edition", "Someone") with
+    {
+        ProviderRecordId = region,
+        Regions = [region],
+        Identifiers = new Identifiers
+        {
+            Other = new Dictionary<string, object>
+            {
+                ["sku"] = $"BK_ADBL_054464{region.ToUpperInvariant()}",
+                ["skuGroup"] = "BK_ADBL_054464"
+            }
+        }
+    };
 
     private static SearchResult Result(string title, string author) => new()
     {

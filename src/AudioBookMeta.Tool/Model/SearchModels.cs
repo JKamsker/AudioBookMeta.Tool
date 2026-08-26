@@ -56,6 +56,16 @@ public sealed record Identifiers
     public Dictionary<string, object> Other { get; init; } = [];
 }
 
+public sealed record EvidenceConflict
+{
+    public required string Field { get; init; }
+    public required string Requested { get; init; }
+    public required string Candidate { get; init; }
+    public required string Reason { get; init; }
+}
+
+public sealed record IdentifierProvenanceEntry(string Type, string Value, string Source);
+
 public sealed record SearchResult
 {
     public required string Provider { get; init; }
@@ -70,6 +80,7 @@ public sealed record SearchResult
     public List<ContributorEntry> Contributors { get; init; } = [];
     public List<SeriesEntry> Series { get; init; } = [];
     public Identifiers Identifiers { get; init; } = new();
+    public List<IdentifierProvenanceEntry> IdentifierProvenance { get; init; } = [];
     public string? Publisher { get; init; }
     public object? PublishedYear { get; init; }
     public string? ReleaseDate { get; init; }
@@ -95,6 +106,11 @@ public sealed record SearchResult
     public List<CollectionEntry> Collections { get; init; } = [];
     public double Score { get; set; }
     public string? Confidence { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? IdentifierMatchKind { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? MatchAssessment { get; set; }
+    public List<EvidenceConflict> Conflicts { get; init; } = [];
     public string? WorkClusterId { get; set; }
     public string? EditionClusterId { get; set; }
     public List<string> Warnings { get; init; } = [];
@@ -104,6 +120,9 @@ public sealed record SearchResult
 
     [JsonIgnore]
     public Dictionary<string, string> ScoreEvidence { get; } = [];
+
+    [JsonIgnore]
+    public string? ProviderRegion { get; init; }
 }
 
 public sealed record ProviderStatus

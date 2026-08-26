@@ -22,6 +22,10 @@ Within schema v1, new optional fields may be added, but existing fields are not 
 
 Search results include an optional `lookup_strategy` describing how a provider found the record. Each `provider_status` includes `lookup_strategies`, including attempted strategies that returned no candidates. Libex values include `sku`, `quick_search`, `structured_search`, and `author_fallback`.
 
+Identifier searches expose `identifier_match_kind` (`sku_exact`, `sku_group`, `asin_exact`, or `isbn_exact`) and a `match_assessment`. A `corroborated_identifier_match` agrees with supplied metadata; `identifier_match` has no corroborating fields; `conflicting_identifier_match` is downgraded and includes structured `conflicts` with requested and candidate values. Concrete SKU matches rank above same-group regional alternatives, and the requested or configured region breaks ties between group matches.
+
+Lismio detail results normalize concrete Audible `/pd/{id}` shop links, including AWIN `ued` redirects, into `identifiers.asin`. Valid ISBN-13/EAN metadata is normalized into ISBN-13 and, for `978` ISBNs, its ISBN-10 equivalent. `identifier_provenance` records whether each value came from a shop link, Lismio EAN metadata, or a deterministic ISBN conversion; search URLs never produce ASINs.
+
 `author books --json` emits `{ "schema_version": 1, "request": {...}, "results": [...] }`. Its normalized results use the same result shape as search and get. `--raw` adds unversioned provider payloads and therefore requires `--json`.
 
 ## JSON Lines
@@ -75,6 +79,8 @@ dotnet audiobookmeta search "Dune" --json --strict
 ```
 
 Provider-native no-result responses, including Libex HTTP 404 responses from search and author fallback endpoints, produce provider status `empty` and exit code `0`. Connectivity, authentication, rate-limit, malformed-response, and server errors remain provider failures.
+
+Lismio health testing validates the stable detail route for known catalogue record `23709`; it does not require an arbitrary search query to return cards. Empty searches therefore remain distinct from malformed detail pages and connectivity failures.
 
 ## Errors and diagnostics
 

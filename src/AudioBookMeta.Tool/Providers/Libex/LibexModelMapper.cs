@@ -3,7 +3,7 @@ using AudiobookMeta.Tool.Model;
 
 namespace AudiobookMeta.Tool.Providers.Libex;
 
-internal sealed class LibexModelMapper(string providerId)
+internal sealed class LibexModelMapper(string providerId, string? providerRegion)
 {
     public SearchResult? Map(BookResponse item)
     {
@@ -15,6 +15,7 @@ internal sealed class LibexModelMapper(string providerId)
         {
             Provider = providerId,
             ProviderType = "libex",
+            ProviderRegion = providerRegion,
             ProviderRecordId = item.Asin,
             Title = title,
             Subtitle = PrimitiveString(item.Subtitle),

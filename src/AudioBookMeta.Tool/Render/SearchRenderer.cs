@@ -58,6 +58,10 @@ public sealed class SearchRenderer(AppConsole console, ResultClusterer clusterer
                     console.Out.MarkupLine($"  [grey]lookup strategy: {AppConsole.Safe(result.LookupStrategy)}[/]");
                 foreach (var evidence in result.ScoreEvidence)
                     console.Out.MarkupLine($"  [grey]{AppConsole.Safe(evidence.Key)}: {AppConsole.Safe(evidence.Value)}[/]");
+                if (result.MatchAssessment is not null)
+                    console.Out.MarkupLine($"  [grey]match assessment: {AppConsole.Safe(result.MatchAssessment)}[/]");
+                foreach (var conflict in result.Conflicts)
+                    console.Out.MarkupLine($"  [grey]conflict {AppConsole.Safe(conflict.Field)}: requested '{AppConsole.Safe(conflict.Requested)}', candidate '{AppConsole.Safe(conflict.Candidate)}' ({AppConsole.Safe(conflict.Reason)})[/]");
                 console.Out.MarkupLine($"  [grey]cluster: {AppConsole.Safe(result.WorkClusterId)} / {AppConsole.Safe(result.EditionClusterId)}[/]");
             }
         }
